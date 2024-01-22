@@ -1,24 +1,17 @@
 from transformers import AutoModelForCausalLM, AutoTokenizer, LlamaTokenizer, LlamaTokenizerFast, GPTNeoXTokenizerFast
-import fire
 from trl import SFTTrainer, DataCollatorForCompletionOnlyLM
 import transformers
-import torch
 import datasets
 
 from tuning.data import tokenizer_data_utils
 from tuning.config import configs, peft_config
-from tuning.utils.config_utils import get_hf_peft_config
 from tuning.utils.data_type_utils import get_torch_dtype
 
-from aim_loader import get_aimstack_callback
 from transformers.utils import logging
-from dataclasses import asdict
-from typing import Optional, Union
+from typing import Optional, Union, List
 
-from peft import LoraConfig
 import os
 from transformers import TrainerCallback
-from peft.utils.other import fsdp_auto_wrap_policy
 
 class PeftSavingCallback(TrainerCallback):
     def on_save(self, args, state, control, **kwargs):
@@ -33,6 +26,7 @@ def train(
         model_args: configs.ModelArguments,
         data_args: configs.DataArguments,
         train_args: configs.TrainingArguments,
+        callbacks: List[TrainerCallback],
         peft_config: Optional[Union[peft_config.LoraConfig, peft_config.PromptTuningConfig]] = None,
    ):
     """Call the SFTTrainer
@@ -62,19 +56,20 @@ def train(
         train_args.fsdp_config = {'xla':False}
 
     task_type = "CAUSAL_LM"
-    model = transformers.AutoModelForCausalLM.from_pretrained(
+    model = AutoModelForCausalLM.from_pretrained(
         model_args.model_name_or_path,
         cache_dir=train_args.cache_dir,
         torch_dtype=get_torch_dtype(model_args.torch_dtype),
         use_flash_attention_2=model_args.use_flash_attn,
     )
-    
-    peft_config = get_hf_peft_config(task_type, peft_config)
+    if peft_config is not None:
+        from tuning.utils.config_utils import get_hf_peft_config
+        peft_config = get_hf_peft_config(task_type, peft_config)
 
     model.gradient_checkpointing_enable()
 
     # TODO: Move these to a config as well
-    tokenizer = transformers.AutoTokenizer.from_pretrained(
+    tokenizer = AutoTokenizer.from_pretrained(
         model_args.model_name_or_path,
         cache_dir=train_args.cache_dir,
         model_max_length=train_args.model_max_length,
@@ -121,8 +116,6 @@ def train(
     json_dataset = datasets.load_dataset('json', data_files=data_args.data_path)
     logger.info(f"Dataset length is {len(json_dataset['train'])}")
 
-    aim_callback = get_aimstack_callback()
-    callbacks=[aim_callback,PeftSavingCallback()]
 
     if train_args.packing:
         logger.info("Packing is set to True")
@@ -156,10 +149,12 @@ def train(
     )
 
     if run_distributed and peft_config is not None:
+        from peft.utils.other import fsdp_auto_wrap_policy
         trainer.accelerator.state.fsdp_plugin.auto_wrap_policy = fsdp_auto_wrap_policy(model)
     trainer.train()
 
 def main(**kwargs):
+    from aim_loader import get_aimstack_callback
     parser = transformers.HfArgumentParser(dataclass_types=(configs.ModelArguments, 
                                                             configs.DataArguments,
                                                             configs.TrainingArguments,
@@ -173,7 +168,8 @@ def main(**kwargs):
         tune_config=prompt_tuning_config
     else:
         tune_config=None
-    train(model_args, data_args, training_args, tune_config)
+    train(model_args=model_args,data_args=data_args,train_args=training_args,callbacks=[get_aimstack_callback(), PeftSavingCallback()], peft_config=tune_config)
 
 if __name__ == "__main__":
+    import fire
     fire.Fire(main)
