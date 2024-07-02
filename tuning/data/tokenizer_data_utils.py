@@ -28,6 +28,7 @@ def tokenizer_and_embedding_resize(
 
     TODO: In the future, make sure we can have vocab size divisible by 64.
     """
+    # multiple of X x is passed as part of arguments
     num_new_tokens = tokenizer.add_special_tokens(special_tokens_dict)
     model.resize_token_embeddings(len(tokenizer))
 

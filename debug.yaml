@@ -1,0 +1,181 @@
+---
+# Source: fsdp-fms-hf-tuning/templates/train-job.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: "ilab-fsdp-fms-hf-tuning-mn-config"
+data:
+  config.json: |
+        {
+          "fsdp_auto_wrap_policy": "TRANSFORMER_BASED_WRAP",
+          "fsdp_backward_prefetch_policy": "BACKWARD_PRE",
+          "fsdp_cpu_ram_efficient_loading": "False",
+          "fsdp_forward_prefetch": "True",
+          "fsdp_offload_params": "False",
+          "fsdp_state_dict_type": "SHARDED_STATE_DICT",
+          "fsdp_sync_module_states": "False",
+          "fsdp_transformer_layer_cls_to_wrap": "LlamaDecoderLayer",
+          "fsdp_use_orig_params": "True"
+        }
+---
+# Source: fsdp-fms-hf-tuning/templates/train-job.yaml
+apiVersion: "kubeflow.org/v1"
+kind: "PyTorchJob"
+metadata:
+    name: "ilab-fsdp-fms-hf-tuning-mn"
+    namespace: "fms-tuning"
+spec:
+    pytorchReplicaSpecs:
+        Master:
+            replicas: 1
+            restartPolicy: Never
+            template:
+                metadata:
+                    namespace: "fms-tuning"
+                spec:
+                    priorityClassName: "default-priority"
+                    containers:
+                        - name: pytorch
+                          image: "icr.io/ftplatform/deepspeed-tmux-2"
+                          imagePullPolicy: IfNotPresent
+                          env:
+                            - name: HF_DATASETS_CACHE
+                              value: "/dev/shm/hf"
+                            - name: HUGGINGFACE_HUB_CACHE
+                              value: "/new_data/hf_cache"
+                            - name: HF_HOME
+                              value: "/new_data/hf_cache"
+                            - name: HF_MODEL_CACHE
+                              value: "/new_data/hf_cache"
+                            - name: TOKENIZERS_PARALLELISM
+                              value: "false"
+                            - name: PIP_CACHE_DIR
+                              value: "/new_data/pip/cache"
+                            - name: WANDB_DISABLED
+                              value: "true"
+                            - name: INTERMEDIATE_DIR
+                              value: "/dev/shm/dataoutput"
+                            - name: MODEL_NAME_OR_PATH
+                              value: "ibm-granite/granite-7b-base"
+                            - name: INPUT_DATASET_PATH
+                              value: "/new_data/training_datasets/training_data/granite/knowledge/release/train.jsonl"
+                            - name: OUTPUT_DIR
+                              value: "/new_data/experiments/ilab-fsdp-fms-hf-tuning-mn-debug"
+                            - name: GIT_PAT
+                              valueFrom:
+                                  secretKeyRef:
+                                      name: ap-git-pat-pub
+                                      key: "token"
+                          command:
+                              - bash
+                              - -c
+                              - |
+                                  echo -e "\e[91mEnvironment Variables:\e[0m"
+                                  env | while read line; do echo -e "\e[91m$line\e[0m"; done
+
+                                  cd /app
+
+                                  # activate the conda environment in the PVC
+                                  source activate /new_data/conda-envs/instructlab-ai
+                                  echo 'check if the correct conda environment is being used'
+                                  python -c 'import sys; print(sys.path)'
+
+                                  git clone -b instructlab https://github.com/kmehant/fms-hf-tuning.git
+                                  cd fms-hf-tuning || exit 1
+
+                                  pip install -e .
+                                  cd .. || exit 1
+
+                                  git clone -b fms-hf-tuning https://$GIT_PAT@github.com/kmehant/fsdp.git
+                                  cd fsdp || exit 1
+
+                                  echo "removing and recreating the output directory: ${OUTPUT_DIR}"
+                                  rm -rf "${OUTPUT_DIR}"
+                                  mkdir -p "${OUTPUT_DIR}"
+
+                                  # data_process.py is from instructlab
+                                  # it involves opinionated flow for adding custom tokens to tokenizer
+                                  # resizing the model's embedding layer
+                                  # addition of pad tokens
+                                  # output of the script is "labels" and "input_ids"
+                                  python data_process.py \
+                                  --logging_level="INFO" \
+                                  --data_path="${INPUT_DATASET_PATH}" \
+                                  --data_output_path="${INTERMEDIATE_DIR}" \
+                                  --max_seq_len="4096" \
+                                  --model_name_or_path="${MODEL_NAME_OR_PATH}" || tail -f /dev/null
+
+                                  cd /app/fms-hf-tuning || exit 1
+
+                                  torchrun \
+                                  --nnodes="${WORLD_SIZE}" \
+                                  --node_rank="${RANK}" \
+                                  --nproc_per_node="4" \
+                                  --rdzv_id="101" \
+                                  --rdzv_endpoint="${MASTER_ADDR}:${MASTER_PORT}"                                  ./tuning/sft_trainer.py \
+                                  --fsdp="shard_grad_op auto_wrap"  \
+                                  --fsdp_config="/etc/config/config.json" \
+                                  --output_dir="${OUTPUT_DIR}" \
+                                  --model_name_or_path="${INTERMEDIATE_DIR}" \
+                                  --tokenizer_name_or_path="${INTERMEDIATE_DIR}" \
+                                  --training_data_path="${INTERMEDIATE_DIR}/data.jsonl" \
+                                  --packing="false" \
+                                  --peft_method="none" \
+                                  --pretokenized="true" \
+                                  --per_device_train_batch_size="4" \
+                                  --include_tokens_per_second \
+                                  --gradient_checkpointing="true" \
+                                  --torch_dtype="bfloat16" \
+                                  --trainer_controller_config_file="./fixtures/orchestrator_log_format.yaml" \
+                                  --logging_strategy="epoch" \
+                                  --num_train_epochs="100" \
+                                  --use_flash_attn="true" \
+                                  --logging_level="INFO" \
+                                  --logging_steps="1" \
+                                  --logging_strategy="steps" \
+                                  --learning_rate=1e-06 \
+                                  --warmup_steps=800 \
+                                  --save_strategy="steps" \
+                                  --save_steps="18" \
+                                  --bf16=true \
+                                  --max_grad_norm=1 \
+                                  --seed="42" | tee "${OUTPUT_DIR}/${RANK}.log"
+
+                                  # Keep the pod running after the training completes
+                                  # or if there is some error that stops training.
+                                  tail -f /dev/null
+                          resources:
+                              requests:
+                                  cpu: 64
+                                  nvidia.com/gpu: 4
+                                  memory: 200Gi
+                                  ephemeral-storage: 100Gi
+                              limits:
+                                  cpu: 64
+                                  nvidia.com/gpu: 4
+                                  memory: 200Gi
+                                  ephemeral-storage: 100Gi
+                          volumeMounts:
+                              - name: scratch
+                                mountPath: /new_data
+                              - name: dshm
+                                mountPath: "/dev/shm"
+                              - name: config-volume
+                                mountPath: /etc/config
+                    volumes:
+                        - name: scratch
+                          persistentVolumeClaim:
+                              claimName: llm-alignment
+                        - name: dshm
+                          emptyDir:
+                              medium: Memory
+                        - name: config-volume
+                          configMap:
+                            name: ilab-fsdp-fms-hf-tuning-mn-config
+                            items:
+                            - key: config.json
+                              path: config.json
+                    imagePullSecrets:
+                        - name: all-icr-io
+                        - name: us-icr-cred
+                        - name: modelops-deps-pullsecret

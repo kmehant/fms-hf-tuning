@@ -171,7 +171,7 @@ def train(
 
     # TODO: Move these to a config as well
     tokenizer = AutoTokenizer.from_pretrained(
-        model_args.model_name_or_path, cache_dir=train_args.cache_dir, use_fast=True
+        model_args.tokenizer_name_or_path, cache_dir=train_args.cache_dir, use_fast=True
     )
 
     # Calculate and save additional metrics to track later.
@@ -179,6 +179,7 @@ def train(
 
     peft_config = get_hf_peft_config(task_type, peft_config)
 
+    ## Skip this for custom tokenizer
     # TODO: understand if we need to hardcode these here or just use defaults in model
     if isinstance(tokenizer, (LlamaTokenizer, LlamaTokenizerFast)):
         tokenizer.add_special_tokens(
@@ -255,6 +256,7 @@ def train(
     }
 
     json_dataset = datasets.load_dataset("json", data_files=data_files)
+    formatted_train_dataset = json_dataset["train"]
     if data_args.data_formatter_template:
         (
             formatted_train_dataset,
@@ -455,6 +457,7 @@ def parse_arguments(parser, json_config=None):
         tune_config = lora_config
     elif peft_method == "pt":
         tune_config = prompt_tuning_config
+        tune_config.tokenizer_name_or_path = model_args.tokenizer_name_or_path
     else:
         tune_config = None
 
