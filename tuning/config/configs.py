@@ -38,6 +38,19 @@ class ModelArguments:
         metadata={"help": "Use Flash attention v2 from transformers, default is True"},
     )
     torch_dtype: Optional[Union[torch.dtype, str]] = torch.bfloat16
+    custom_tokenizer_name_or_path: Optional[str] = field(
+        default=None,
+        metadata={
+            "help": (
+                "use custom_tokenizer_name_or_path to set custom tokenizer \
+            for training"
+            )
+        },
+    )
+
+    def __post_init__(self):
+        if not self.custom_tokenizer_name_or_path:
+            self.custom_tokenizer_name_or_path = self.model_name_or_path
 
 
 @dataclass

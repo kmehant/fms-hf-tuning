@@ -171,7 +171,9 @@ def train(
 
     # TODO: Move these to a config as well
     tokenizer = AutoTokenizer.from_pretrained(
-        model_args.model_name_or_path, cache_dir=train_args.cache_dir, use_fast=True
+        model_args.custom_tokenizer_name_or_path,
+        cache_dir=train_args.cache_dir,
+        use_fast=True,
     )
 
     # Calculate and save additional metrics to track later.
