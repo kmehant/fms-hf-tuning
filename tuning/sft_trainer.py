@@ -243,47 +243,63 @@ def train(
 
     # Validate if data args are set properly
     validate_data_args(data_args, packing)
-    data_collator = get_data_collator(packing, data_args.response_template, tokenizer)
+    data_collator = get_data_collator(
+        packing,
+        tokenizer,
+        max_seq_length,
+        data_args.response_template,
+        data_args.dataset_text_field,
+    )
 
     # load the data by parsing JSON
     ### TODO: all the jSON file formatting will be moved to a separate function
     train_dataset = load_dataset(data_args.training_data_path)
     validation_dataset = load_dataset(data_args.validation_data_path)
 
-    format_dataset = lambda example: {  # pylint: disable=unnecessary-lambda-assignment
-        f"{data_args.dataset_text_field}": example[f"{data_args.dataset_text_field}"]
-        + tokenizer.eos_token
-    }
-
-    if data_args.data_formatter_template:
-        (
-            formatted_train_dataset,
-            data_args.dataset_text_field,
-        ) = apply_custom_formatting_template(
-            train_dataset,
-            data_args.data_formatter_template,
-            tokenizer.eos_token,
+    train_dataset = train_dataset.map(lambda example: {"input_ids": example["tokens"]})
+    train_dataset = train_dataset.map(lambda example: {"labels": example["tokens"]})
+    if validation_dataset:
+        validation_dataset = validation_dataset.map(
+            lambda example: {"input_ids": example["tokens"]}
         )
-    else:
-        formatted_train_dataset = train_dataset.map(format_dataset)
-    logger.info("Training dataset length is %s", len(formatted_train_dataset))
-
-    formatted_validation_dataset = None
-    if data_args.validation_data_path:
-        if data_args.data_formatter_template:
-            (
-                formatted_validation_dataset,
-                data_args.dataset_text_field,
-            ) = apply_custom_formatting_template(
-                validation_dataset,
-                data_args.data_formatter_template,
-                tokenizer.eos_token,
-            )
-        else:
-            formatted_validation_dataset = validation_dataset.map(format_dataset)
-        logger.info(
-            "Validation dataset length is %s", len(formatted_validation_dataset)
+        validation_dataset = validation_dataset.map(
+            lambda example: {"labels": example["tokens"]}
         )
+
+    # format_dataset = lambda example: {  # pylint: disable=unnecessary-lambda-assignment
+    #     f"{data_args.dataset_text_field}": example[f"{data_args.dataset_text_field}"]
+    #     + tokenizer.eos_token
+    # }
+
+    # if data_args.data_formatter_template:
+    #     (
+    #         formatted_train_dataset,
+    #         data_args.dataset_text_field,
+    #     ) = apply_custom_formatting_template(
+    #         train_dataset,
+    #         data_args.data_formatter_template,
+    #         tokenizer.eos_token,
+    #     )
+    # else:
+    #     formatted_train_dataset = train_dataset.map(format_dataset)
+    # logger.info("Training dataset length is %s", len(formatted_train_dataset))
+
+    # formatted_validation_dataset = None
+    # if data_args.validation_data_path:
+    #     if data_args.data_formatter_template:
+    #         (
+    #             formatted_validation_dataset,
+    #             data_args.dataset_text_field,
+    #         ) = apply_custom_formatting_template(
+    #             validation_dataset,
+    #             data_args.data_formatter_template,
+    #             tokenizer.eos_token,
+    #         )
+    #     else:
+    #         formatted_validation_dataset = validation_dataset.map(format_dataset)
+    #     logger.info(
+    #         "Validation dataset length is %s", len(formatted_validation_dataset)
+    #     )
     ### JSON file formatting ends here
 
     if framework is not None and framework.requires_agumentation:
@@ -311,8 +327,8 @@ def train(
     trainer = SFTTrainer(
         model=model,
         tokenizer=tokenizer,
-        train_dataset=formatted_train_dataset,
-        eval_dataset=formatted_validation_dataset,
+        train_dataset=train_dataset,
+        eval_dataset=validation_dataset,
         packing=packing,
         data_collator=data_collator,
         dataset_text_field=data_args.dataset_text_field,

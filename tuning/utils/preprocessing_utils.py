@@ -69,8 +69,10 @@ def validate_data_args(data_args: configs.DataArguments, packing: bool):
 
 def get_data_collator(
     packing: bool,
-    response_template: Optional[str],
     tokenizer: AutoTokenizer,
+    max_sequence_length: int,
+    response_template: Optional[str] = None,
+    dataset_text_field: Optional[str] = None,
 ) -> Callable:
     """Create and return the the appropriate collator type based on the configuration for packing,
     response_template, and dataset_text_field.
@@ -87,6 +89,11 @@ def get_data_collator(
         Callable
             Callable collator to be leveraged by the trainer.
     """
+    if dataset_text_field is None and response_template is None:
+        # Use the seq2seq data collator; note that this automatically pads labels with -100
+        return DataCollatorForSeq2Seq(
+            tokenizer=tokenizer, padding=True, max_length=max_sequence_length
+        )
     if not packing:
         # TODO: near term - how response template ids are parsed out needs to be cleaned.
         # The [2:] here applies if response template has \n prefix, it is needed to strip \n,
