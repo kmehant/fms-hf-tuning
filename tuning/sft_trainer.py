@@ -253,11 +253,16 @@ def train(
 
     # load the data by parsing JSON
     ### TODO: all the jSON file formatting will be moved to a separate function
-    train_dataset = load_dataset(data_args.training_data_path)
-    validation_dataset = load_dataset(data_args.validation_data_path)
+    train_dataset = load_dataset(
+        data_args.training_data_path, streaming=data_args.streaming
+    )
+    validation_dataset = load_dataset(
+        data_args.validation_data_path, streaming=data_args.streaming
+    )
 
     train_dataset = train_dataset.map(lambda example: {"input_ids": example["tokens"]})
     train_dataset = train_dataset.map(lambda example: {"labels": example["tokens"]})
+
     if validation_dataset:
         validation_dataset = validation_dataset.map(
             lambda example: {"input_ids": example["tokens"]}

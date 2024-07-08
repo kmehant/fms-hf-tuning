@@ -85,6 +85,10 @@ class DataArguments:
                          or data_formatter_template needs to be supplied."
         },
     )
+    streaming: bool = field(
+        default=False,
+        metadata={"help": "set to True to stream data during training"},
+    )
 
 
 @dataclass
