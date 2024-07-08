@@ -262,7 +262,6 @@ def train(
 
     train_dataset = train_dataset.map(lambda example: {"input_ids": example["tokens"]})
     train_dataset = train_dataset.map(lambda example: {"labels": example["tokens"]})
-
     if validation_dataset:
         validation_dataset = validation_dataset.map(
             lambda example: {"input_ids": example["tokens"]}
@@ -270,6 +269,10 @@ def train(
         validation_dataset = validation_dataset.map(
             lambda example: {"labels": example["tokens"]}
         )
+
+    train_dataset = train_dataset._resolve_features()
+    if validation_dataset:
+        validation_dataset = validation_dataset._resolve_features()
 
     # format_dataset = lambda example: {  # pylint: disable=unnecessary-lambda-assignment
     #     f"{data_args.dataset_text_field}": example[f"{data_args.dataset_text_field}"]
