@@ -253,12 +253,8 @@ def train(
 
     # load the data by parsing JSON
     ### TODO: all the jSON file formatting will be moved to a separate function
-    train_dataset = load_dataset(
-        data_args.training_data_path, streaming=data_args.streaming
-    )
-    validation_dataset = load_dataset(
-        data_args.validation_data_path, streaming=data_args.streaming
-    )
+    train_dataset = load_dataset(data_args.training_data_path)
+    validation_dataset = load_dataset(data_args.validation_data_path)
 
     train_dataset = train_dataset.map(lambda example: {"input_ids": example["tokens"]})
     train_dataset = train_dataset.map(lambda example: {"labels": example["tokens"]})
@@ -269,10 +265,19 @@ def train(
         validation_dataset = validation_dataset.map(
             lambda example: {"labels": example["tokens"]}
         )
+    # resolving features is needed however it messes up next(iter()) operation
+    # needed after map over iterable dataset
+    # train_dataset = train_dataset._resolve_features()
+    # if validation_dataset:
+    #     validation_dataset = validation_dataset._resolve_features()
 
-    train_dataset = train_dataset._resolve_features()
-    if validation_dataset:
-        validation_dataset = validation_dataset._resolve_features()
+    if data_args.streaming:
+        train_dataset = train_dataset.to_iterable_dataset()
+        if validation_dataset:
+            validation_dataset = validation_dataset.to_iterable_dataset()
+
+    logger.warning(train_dataset)
+    logger.warning(train_dataset.features)
 
     # format_dataset = lambda example: {  # pylint: disable=unnecessary-lambda-assignment
     #     f"{data_args.dataset_text_field}": example[f"{data_args.dataset_text_field}"]
