@@ -16,6 +16,7 @@
 from typing import Dict, List, Optional, Union
 import dataclasses
 import json
+import os
 import sys
 import time
 import traceback
@@ -256,8 +257,12 @@ def train(
     train_dataset = load_dataset(data_args.training_data_path)
     validation_dataset = load_dataset(data_args.validation_data_path)
 
-    train_dataset = train_dataset.map(lambda example: {"input_ids": example["tokens"]})
-    train_dataset = train_dataset.map(lambda example: {"labels": example["tokens"]})
+    train_dataset = train_dataset.map(
+        lambda example: {"input_ids": example["tokens"]}, num_proc=os.cpu_count()
+    )
+    train_dataset = train_dataset.map(
+        lambda example: {"labels": example["tokens"]}, num_proc=os.cpu_count()
+    )
     if validation_dataset:
         validation_dataset = validation_dataset.map(
             lambda example: {"input_ids": example["tokens"]}
