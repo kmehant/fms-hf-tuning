@@ -1,6 +1,7 @@
 # Standard
 import concurrent.futures
 import glob
+import multiprocessing
 import os
 
 # Third Party
@@ -14,13 +15,13 @@ def find_arrow_files(directory):
     return arrow_files
 
 
-def process_file(file, directory, dest, pbar=None):
+def process_file(file, directory, dest, progress_counter):
     dest_path = os.path.join(dest, file[len(directory) + 1 :])
     if not os.path.exists(os.path.dirname(dest_path)):
         os.makedirs(os.path.dirname(dest_path))
     if os.path.exists(dest_path):
-        if pbar is not None:
-            pbar.update(1)
+        with progress_counter.get_lock():
+            progress_counter.value += 1
         return f"Skipped {dest_path} (already exists)"
     with open(file, "rb") as f:
         with pa.OSFile(dest_path, "wb") as wf:
@@ -36,24 +37,41 @@ def process_file(file, directory, dest, pbar=None):
                         {"tokens": [record_batch.to_pydict()["tokens"]]}
                     )
                     writer.write_batch(record_batch)
-    if pbar is not None:
-        pbar.update(1)
+    with progress_counter.get_lock():
+        progress_counter.value += 1
     return f"Written at: {dest_path}"
 
 
-directory = "/data/data/spanish-gov-tokenized/llama3/arrow/lang=es"
-arrow_files = find_arrow_files(directory)
+def main():
 
-dest = "/data/data/fixed-spanish-gov-tokenized"
+    directory = "/data/data/spanish-gov-tokenized/llama3/arrow/lang=es"
+    arrow_files = find_arrow_files(directory)
 
+    dest = "/gpfs/anayak/fixed-spanish-gov-tokenized"
 
-# Parallel processing using ProcessPoolExecutor with 2 CPUs
-with tqdm(total=len(arrow_files)) as pbar:
-    with concurrent.futures.ProcessPoolExecutor(max_workers=2) as executor:
-        futures = [
-            executor.submit(process_file, file, directory, dest, pbar)
-            for file in arrow_files
-        ]
-        for future in concurrent.futures.as_completed(futures):
+    # Parallel processing using ProcessPoolExecutor with 2 CPUs
+    with multiprocessing.Manager() as manager:
+        progress_counter = manager.Value("i", 0)
+
+        with tqdm(total=len(arrow_files)) as pbar:
+            with concurrent.futures.ProcessPoolExecutor(max_workers=40) as executor:
+                futures = [
+                    executor.submit(
+                        process_file, file, directory, dest, progress_counter
+                    )
+                    for file in arrow_files
+                ]
+                while True:
+                    completed = sum(f.done() for f in futures)
+                    pbar.update(completed - pbar.n)
+                    if completed == len(futures):
+                        break
+                    pbar.refresh()
+
+        for future in futures:
             result = future.result()
             print(result)
+
+
+if __name__ == "__main__":
+    main()
