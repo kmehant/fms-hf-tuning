@@ -22,6 +22,7 @@ import time
 import traceback
 
 # Third Party
+from datasets import IterableDataset
 from huggingface_hub.utils._validators import HFValidationError
 from peft.utils.other import fsdp_auto_wrap_policy
 from torch.cuda import OutOfMemoryError
@@ -64,6 +65,52 @@ from tuning.utils.error_logging import (
     write_termination_log,
 )
 from tuning.utils.preprocessing_utils import get_data_collator, validate_data_args
+
+
+class ConstantLengthDataset(IterableDataset):
+    def __init__(
+        self,
+        dataset,
+        seq_length=1024,
+        num_of_sequences=1024,
+    ):
+        self.dataset = dataset
+        self.seq_length = seq_length
+        self.current_size = 0
+        self.max_buffer_size = seq_length * num_of_sequences
+
+    def __len__(self):
+        return len(self.dataset)
+
+    def __iter__(self):
+        # Third Party
+        import torch
+
+        iterator = iter(self.dataset)
+        more_examples = True
+        while more_examples:
+            buffer, buffer_len = [], 0
+            while True:
+                if buffer_len >= self.max_buffer_size:
+                    break
+                try:
+                    buffer.extend(next(iterator)["tokens"])
+                    buffer_len = len(buffer)
+                except StopIteration:
+                    more_examples = False
+                    break
+            all_token_ids = buffer
+            examples = []
+            for i in range(0, len(all_token_ids), self.seq_length):
+                input_ids = all_token_ids[i : i + self.seq_length]
+                if len(input_ids) == self.seq_length:
+                    examples.append(input_ids)
+            for example in examples:
+                self.current_size += 1
+                yield {
+                    "input_ids": torch.LongTensor(example),
+                    "labels": torch.LongTensor(example),
+                }
 
 
 def train(
@@ -257,19 +304,19 @@ def train(
     train_dataset = load_dataset(data_args.training_data_path)
     validation_dataset = load_dataset(data_args.validation_data_path)
 
-    train_dataset = train_dataset.map(
-        lambda example: {"input_ids": example["tokens"]}, num_proc=os.cpu_count()
-    )
-    train_dataset = train_dataset.map(
-        lambda example: {"labels": example["tokens"]}, num_proc=os.cpu_count()
-    )
-    if validation_dataset:
-        validation_dataset = validation_dataset.map(
-            lambda example: {"input_ids": example["tokens"]}
-        )
-        validation_dataset = validation_dataset.map(
-            lambda example: {"labels": example["tokens"]}
-        )
+    # train_dataset = train_dataset.map(
+    #     lambda example: {"input_ids": example["tokens"]}, num_proc=os.cpu_count()
+    # )
+    # train_dataset = train_dataset.map(
+    #     lambda example: {"labels": example["tokens"]}, num_proc=os.cpu_count()
+    # )
+    # if validation_dataset:
+    #     validation_dataset = validation_dataset.map(
+    #         lambda example: {"input_ids": example["tokens"]}
+    #     )
+    #     validation_dataset = validation_dataset.map(
+    #         lambda example: {"labels": example["tokens"]}
+    #     )
     # resolving features is needed however it messes up next(iter()) operation
     # needed after map over iterable dataset
     # train_dataset = train_dataset._resolve_features()
@@ -280,6 +327,10 @@ def train(
         train_dataset = train_dataset.to_iterable_dataset()
         if validation_dataset:
             validation_dataset = validation_dataset.to_iterable_dataset()
+
+    train_dataset = ConstantLengthDataset(train_dataset, max_seq_length)
+    if validation_dataset:
+        validation_dataset = ConstantLengthDataset(validation_dataset, max_seq_length)
 
     logger.warning(train_dataset)
     logger.warning(train_dataset.features)
