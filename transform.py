@@ -1,4 +1,5 @@
 # Standard
+import concurrent.futures
 import glob
 import os
 
@@ -13,19 +14,12 @@ def find_arrow_files(directory):
     return arrow_files
 
 
-directory = "/data/data/spanish-gov-tokenized/llama3/arrow/lang=es"
-arrow_files = find_arrow_files(directory)
-
-dest = "/data/data/fixed-spanish-gov-tokenized"
-
-print(arrow_files)
-
-for file in tqdm(arrow_files, total=len(arrow_files)):
+def process_file(file, directory, dest):
     dest_path = os.path.join(dest, file[len(directory) + 1 :])
     if not os.path.exists(os.path.dirname(dest_path)):
         os.makedirs(os.path.dirname(dest_path))
     if os.path.exists(dest_path):
-        continue
+        return f"Skipped {dest_path} (already exists)"
     with open(file, "rb") as f:
         with pa.OSFile(dest_path, "wb") as wf:
             with pa.ipc.new_stream(
@@ -40,4 +34,29 @@ for file in tqdm(arrow_files, total=len(arrow_files)):
                         {"tokens": [record_batch.to_pydict()["tokens"]]}
                     )
                     writer.write_batch(record_batch)
-    print(f"written at : {dest_path}")
+    return f"Written at: {dest_path}"
+
+
+directory = "/data/data/spanish-gov-tokenized/llama3/arrow/lang=es"
+arrow_files = find_arrow_files(directory)
+
+dest = "/data/data/fixed-spanish-gov-tokenized"
+
+print(arrow_files)
+
+# Parallel processing using ProcessPoolExecutor
+with concurrent.futures.ProcessPoolExecutor() as executor:
+    results = list(
+        tqdm(
+            executor.map(
+                process_file,
+                arrow_files,
+                [directory] * len(arrow_files),
+                [dest] * len(arrow_files),
+            ),
+            total=len(arrow_files),
+        )
+    )
+
+for result in results:
+    print(result)
