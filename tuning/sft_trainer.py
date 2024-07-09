@@ -79,7 +79,8 @@ class ConstantLengthDataset(IterableDataset):
         self.seq_length = seq_length
         self.current_size = 0
         self.max_buffer_size = seq_length * num_of_sequences
-        self.progress_bar = tqdm()
+        # harded
+        self.progress_bar = tqdm(total=105196190)
 
     def __len__(self):
         return len(self.dataset)
