@@ -14,11 +14,13 @@ def find_arrow_files(directory):
     return arrow_files
 
 
-def process_file(file, directory, dest):
+def process_file(file, directory, dest, pbar=None):
     dest_path = os.path.join(dest, file[len(directory) + 1 :])
     if not os.path.exists(os.path.dirname(dest_path)):
         os.makedirs(os.path.dirname(dest_path))
     if os.path.exists(dest_path):
+        if pbar is not None:
+            pbar.update(1)
         return f"Skipped {dest_path} (already exists)"
     with open(file, "rb") as f:
         with pa.OSFile(dest_path, "wb") as wf:
@@ -34,6 +36,8 @@ def process_file(file, directory, dest):
                         {"tokens": [record_batch.to_pydict()["tokens"]]}
                     )
                     writer.write_batch(record_batch)
+    if pbar is not None:
+        pbar.update(1)
     return f"Written at: {dest_path}"
 
 
@@ -44,19 +48,13 @@ dest = "/data/data/fixed-spanish-gov-tokenized"
 
 print(arrow_files)
 
-# Parallel processing using ProcessPoolExecutor
-with concurrent.futures.ProcessPoolExecutor() as executor:
-    results = list(
-        tqdm(
-            executor.map(
-                process_file,
-                arrow_files,
-                [directory] * len(arrow_files),
-                [dest] * len(arrow_files),
-            ),
-            total=len(arrow_files),
-        )
-    )
-
-for result in results:
-    print(result)
+# Parallel processing using ProcessPoolExecutor with 2 CPUs
+with tqdm(total=len(arrow_files)) as pbar:
+    with concurrent.futures.ProcessPoolExecutor(max_workers=2) as executor:
+        futures = [
+            executor.submit(process_file, file, directory, dest, pbar)
+            for file in arrow_files
+        ]
+        for future in concurrent.futures.as_completed(futures):
+            result = future.result()
+            print(result)
