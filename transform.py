@@ -46,7 +46,6 @@ arrow_files = find_arrow_files(directory)
 
 dest = "/data/data/fixed-spanish-gov-tokenized"
 
-print(arrow_files)
 
 # Parallel processing using ProcessPoolExecutor with 2 CPUs
 with tqdm(total=len(arrow_files)) as pbar:
