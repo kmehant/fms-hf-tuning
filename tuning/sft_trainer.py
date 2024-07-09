@@ -26,6 +26,7 @@ from datasets import Dataset, IterableDataset
 from huggingface_hub.utils._validators import HFValidationError
 from peft.utils.other import fsdp_auto_wrap_policy
 from torch.cuda import OutOfMemoryError
+from tqdm import tqdm
 from transformers import (
     AutoModelForCausalLM,
     AutoTokenizer,
@@ -78,6 +79,7 @@ class ConstantLengthDataset(IterableDataset):
         self.seq_length = seq_length
         self.current_size = 0
         self.max_buffer_size = seq_length * num_of_sequences
+        self.progress_bar = tqdm()
 
     def __len__(self):
         return len(self.dataset)
@@ -95,6 +97,7 @@ class ConstantLengthDataset(IterableDataset):
                     break
                 try:
                     buffer.extend(next(iterator)["tokens"])
+                    self.progress_bar.update(1)
                     buffer_len = len(buffer)
                 except StopIteration:
                     more_examples = False
