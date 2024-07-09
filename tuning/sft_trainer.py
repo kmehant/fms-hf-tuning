@@ -22,7 +22,7 @@ import time
 import traceback
 
 # Third Party
-from datasets import IterableDataset
+from datasets import Dataset, IterableDataset
 from huggingface_hub.utils._validators import HFValidationError
 from peft.utils.other import fsdp_auto_wrap_policy
 from torch.cuda import OutOfMemoryError
@@ -323,14 +323,25 @@ def train(
     # if validation_dataset:
     #     validation_dataset = validation_dataset._resolve_features()
 
-    if data_args.streaming:
-        train_dataset = train_dataset.to_iterable_dataset()
-        if validation_dataset:
-            validation_dataset = validation_dataset.to_iterable_dataset()
+    def data_generator(constant_length_iterator):
+        yield from constant_length_iterator
 
     train_dataset = ConstantLengthDataset(train_dataset, max_seq_length)
     if validation_dataset:
         validation_dataset = ConstantLengthDataset(validation_dataset, max_seq_length)
+
+    train_dataset = Dataset.from_generator(
+        data_generator, gen_kwargs={"constant_length_iterator": train_dataset}
+    )
+    if validation_dataset:
+        validation_dataset = Dataset.from_generator(
+            data_generator, gen_kwargs={"constant_length_iterator": validation_dataset}
+        )
+
+    if data_args.streaming:
+        train_dataset = train_dataset.to_iterable_dataset()
+        if validation_dataset:
+            validation_dataset = validation_dataset.to_iterable_dataset()
 
     logger.warning(train_dataset)
     logger.warning(train_dataset.features)
