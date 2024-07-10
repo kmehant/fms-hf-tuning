@@ -22,10 +22,11 @@ import time
 import traceback
 
 # Third Party
-from datasets import Dataset, IterableDataset
+from datasets import Dataset
 from huggingface_hub.utils._validators import HFValidationError
 from peft.utils.other import fsdp_auto_wrap_policy
 from torch.cuda import OutOfMemoryError
+from torch.utils.data import IterableDataset
 from tqdm import tqdm
 from transformers import (
     AutoModelForCausalLM,
@@ -311,6 +312,8 @@ def train(
     validation_dataset = load_dataset(
         data_args.validation_data_path, streaming=data_args.streaming
     )
+
+    logger.warning(train_dataset)
 
     # train_dataset = train_dataset.map(
     #     lambda example: {"input_ids": example["tokens"]}, num_proc=os.cpu_count()
