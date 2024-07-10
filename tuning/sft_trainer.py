@@ -305,8 +305,12 @@ def train(
 
     # load the data by parsing JSON
     ### TODO: all the jSON file formatting will be moved to a separate function
-    train_dataset = load_dataset(data_args.training_data_path)
-    validation_dataset = load_dataset(data_args.validation_data_path)
+    train_dataset = load_dataset(
+        data_args.training_data_path, streaming=data_args.streaming
+    )
+    validation_dataset = load_dataset(
+        data_args.validation_data_path, streaming=data_args.streaming
+    )
 
     # train_dataset = train_dataset.map(
     #     lambda example: {"input_ids": example["tokens"]}, num_proc=os.cpu_count()
@@ -334,21 +338,23 @@ def train(
     if validation_dataset:
         validation_dataset = ConstantLengthDataset(validation_dataset, max_seq_length)
 
-    train_dataset = Dataset.from_generator(
-        data_generator, gen_kwargs={"constant_length_iterator": train_dataset}
-    )
-    if validation_dataset:
-        validation_dataset = Dataset.from_generator(
-            data_generator, gen_kwargs={"constant_length_iterator": validation_dataset}
+    if not data_args.streaming:
+        train_dataset = Dataset.from_generator(
+            data_generator, gen_kwargs={"constant_length_iterator": train_dataset}
         )
-
-    if data_args.streaming:
-        train_dataset = train_dataset.to_iterable_dataset()
         if validation_dataset:
-            validation_dataset = validation_dataset.to_iterable_dataset()
+            validation_dataset = Dataset.from_generator(
+                data_generator,
+                gen_kwargs={"constant_length_iterator": validation_dataset},
+            )
+
+    # if data_args.streaming:
+    #     train_dataset = train_dataset.to_iterable_dataset()
+    #     if validation_dataset:
+    #         validation_dataset = validation_dataset.to_iterable_dataset()
 
     logger.warning(train_dataset)
-    logger.warning(train_dataset.features)
+    # logger.warning(train_dataset.features)
 
     # format_dataset = lambda example: {  # pylint: disable=unnecessary-lambda-assignment
     #     f"{data_args.dataset_text_field}": example[f"{data_args.dataset_text_field}"]
