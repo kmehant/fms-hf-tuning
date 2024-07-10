@@ -98,7 +98,11 @@ class ConstantLengthDataset(IterableDataset):
                 if buffer_len >= self.max_buffer_size:
                     break
                 try:
+                    # add bos token id
+                    buffer.append(128000)
                     buffer.extend(next(iterator)["tokens"])
+                    # add eos token id
+                    buffer.append(128001)
                     self.progress_bar.update(1)
                     buffer_len = len(buffer)
                 except StopIteration:
