@@ -32,11 +32,15 @@ def process_file(file, directory, dest, progress_counter):
                 batches = [
                     reader.get_batch(i) for i in range(reader.num_record_batches)
                 ]
-                for batch_idx, record_batch in enumerate(batches):
+                record_batches = []
+                for _, record_batch in enumerate(batches):
                     record_batch = pa.RecordBatch.from_pydict(
                         {"tokens": [record_batch.to_pydict()["tokens"]]}
                     )
-                    writer.write_batch(record_batch)
+                    record_batches.append(record_batch)
+                    # writer.write_batch(record_batch)
+                table = pa.Table.from_batches(record_batches)
+                writer.write_table(table)
     with progress_counter.get_lock():
         progress_counter.value += 1
     return f"Written at: {dest_path}"
