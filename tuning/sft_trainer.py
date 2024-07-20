@@ -22,7 +22,7 @@ import time
 import traceback
 
 # Third Party
-from datasets import Dataset
+from datasets import Dataset, interleave_datasets
 from huggingface_hub.utils._validators import HFValidationError
 from peft.utils.other import fsdp_auto_wrap_policy
 from torch.cuda import OutOfMemoryError
@@ -41,6 +41,7 @@ from transformers.utils import is_accelerate_available, logging
 from trl import SFTConfig, SFTTrainer
 import fire
 import transformers
+import yaml
 
 # Local
 from tuning.config import configs, peft_config
@@ -70,18 +71,14 @@ from tuning.utils.preprocessing_utils import get_data_collator, validate_data_ar
 
 
 class ConstantLengthDataset(IterableDataset):
-    def __init__(
-        self,
-        dataset,
-        seq_length=1024,
-        num_of_sequences=1024,
-    ):
+    def __init__(self, dataset, seq_length=1024, num_of_sequences=1024, tokenizer=None):
         self.dataset = dataset
         self.seq_length = seq_length
         self.current_size = 0
         self.max_buffer_size = seq_length * num_of_sequences
         # harded
         self.progress_bar = tqdm(total=105196190)
+        self.tokenizer = tokenizer
 
     def __len__(self):
         return len(self.dataset)
@@ -98,9 +95,15 @@ class ConstantLengthDataset(IterableDataset):
                 if buffer_len >= self.max_buffer_size:
                     break
                 try:
+                    sample = next(iterator)
+                    # not tokenized
+                    if "contents" in sample:
+                        sample["tokens"] = self.tokenizer.encode(sample["contents"])
+                        if 128000 == sample["tokens"][0]:
+                            sample["tokens"] = sample["tokens"][1:]
                     # add bos token id
                     buffer.append(128000)
-                    buffer.extend(next(iterator)["tokens"])
+                    buffer.extend(sample["tokens"])
                     # add eos token id
                     buffer.append(128001)
                     self.progress_bar.update(1)
@@ -238,22 +241,22 @@ def train(
 
     peft_config = get_hf_peft_config(task_type, peft_config)
 
-    # TODO: understand if we need to hardcode these here or just use defaults in model
-    if isinstance(tokenizer, (LlamaTokenizer, LlamaTokenizerFast)):
-        tokenizer.add_special_tokens(
-            {
-                "bos_token": "<s>",
-                "eos_token": "</s>",
-                "unk_token": "<unk>",
-                "pad_token": "<pad>",
-            }
-        )
-    elif isinstance(tokenizer, (GPT2Tokenizer, GPTNeoXTokenizerFast)):
-        tokenizer.add_special_tokens(
-            {
-                "pad_token": "<pad>",
-            }
-        )
+    # # TODO: understand if we need to hardcode these here or just use defaults in model
+    # if isinstance(tokenizer, (LlamaTokenizer, LlamaTokenizerFast)):
+    #     tokenizer.add_special_tokens(
+    #         {
+    #             "bos_token": "<s>",
+    #             "eos_token": "</s>",
+    #             "unk_token": "<unk>",
+    #             "pad_token": "<pad>",
+    #         }
+    #     )
+    # elif isinstance(tokenizer, (GPT2Tokenizer, GPTNeoXTokenizerFast)):
+    #     tokenizer.add_special_tokens(
+    #         {
+    #             "pad_token": "<pad>",
+    #         }
+    #     )
 
     max_seq_length = min(train_args.max_seq_length, tokenizer.model_max_length)
     logger.info("Max sequence length is %s", max_seq_length)
@@ -268,18 +271,18 @@ def train(
 
     # TODO: we need to change this, perhaps follow what open instruct does?
     special_tokens_dict = {}
-    if tokenizer.pad_token is None:
-        logger.warning("PAD token set to default, missing in tokenizer")
-        special_tokens_dict["pad_token"] = configs.DEFAULT_PAD_TOKEN
-    if tokenizer.eos_token is None:
-        logger.warning("EOS token set to default, missing in tokenizer")
-        special_tokens_dict["eos_token"] = configs.DEFAULT_EOS_TOKEN
-    if tokenizer.bos_token is None:
-        logger.warning("BOS token set to default, missing in tokenizer")
-        special_tokens_dict["bos_token"] = configs.DEFAULT_BOS_TOKEN
-    if tokenizer.unk_token is None:
-        logger.warning("UNK token set to default, missing in tokenizer")
-        special_tokens_dict["unk_token"] = configs.DEFAULT_UNK_TOKEN
+    # if tokenizer.pad_token is None:
+    #     logger.warning("PAD token set to default, missing in tokenizer")
+    #     special_tokens_dict["pad_token"] = configs.DEFAULT_PAD_TOKEN
+    # if tokenizer.eos_token is None:
+    #     logger.warning("EOS token set to default, missing in tokenizer")
+    #     special_tokens_dict["eos_token"] = configs.DEFAULT_EOS_TOKEN
+    # if tokenizer.bos_token is None:
+    #     logger.warning("BOS token set to default, missing in tokenizer")
+    #     special_tokens_dict["bos_token"] = configs.DEFAULT_BOS_TOKEN
+    # if tokenizer.unk_token is None:
+    #     logger.warning("UNK token set to default, missing in tokenizer")
+    #     special_tokens_dict["unk_token"] = configs.DEFAULT_UNK_TOKEN
 
     # TODO: lower priority but understand if resizing impacts inference quality and why its needed.
     # It makes sense if we manipulate tokenizer that we also save it and provide it to inference.
@@ -307,41 +310,37 @@ def train(
         data_args.response_template,
         data_args.dataset_text_field,
     )
-
-    # load the data by parsing JSON
-    ### TODO: all the jSON file formatting will be moved to a separate function
-    train_dataset = load_dataset(
-        data_args.training_data_path, streaming=data_args.streaming
-    )
+    train_dataset = None
+    if data_args.training_data_path.endswith(
+        ".yaml"
+    ) or data_args.training_data_path.endswith(".yml"):
+        train_datasets = []
+        probabilities = []
+        data_config = yaml.safe_load(open(data_args.training_data_path, "r"))
+        for dc in tqdm(data_config["config"], total=len(data_config["config"])):
+            train_datasets.append(
+                load_dataset(dc["path"], streaming=data_args.streaming)
+            )
+            probabilities.append(dc["prob"])
+        train_dataset = interleave_datasets(
+            train_datasets,
+            seed=train_args.seed,
+            stopping_strategy=data_args.dataset_stopping_strategy,
+            probabilities=probabilities,
+        )
+    else:
+        train_dataset = load_dataset(
+            data_args.training_data_path, streaming=data_args.streaming
+        )
+        logger.warning(train_dataset)
     validation_dataset = load_dataset(
         data_args.validation_data_path, streaming=data_args.streaming
     )
 
-    logger.warning(train_dataset)
-
-    # train_dataset = train_dataset.map(
-    #     lambda example: {"input_ids": example["tokens"]}, num_proc=os.cpu_count()
-    # )
-    # train_dataset = train_dataset.map(
-    #     lambda example: {"labels": example["tokens"]}, num_proc=os.cpu_count()
-    # )
-    # if validation_dataset:
-    #     validation_dataset = validation_dataset.map(
-    #         lambda example: {"input_ids": example["tokens"]}
-    #     )
-    #     validation_dataset = validation_dataset.map(
-    #         lambda example: {"labels": example["tokens"]}
-    #     )
-    # resolving features is needed however it messes up next(iter()) operation
-    # needed after map over iterable dataset
-    # train_dataset = train_dataset._resolve_features()
-    # if validation_dataset:
-    #     validation_dataset = validation_dataset._resolve_features()
-
     def data_generator(constant_length_iterator):
         yield from constant_length_iterator
 
-    train_dataset = ConstantLengthDataset(train_dataset, max_seq_length)
+    train_dataset = ConstantLengthDataset(train_dataset, max_seq_length, tokenizer)
     if validation_dataset:
         validation_dataset = ConstantLengthDataset(validation_dataset, max_seq_length)
 

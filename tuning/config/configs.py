@@ -57,7 +57,7 @@ class ModelArguments:
 class DataArguments:
     training_data_path: str = field(
         default=None,
-        metadata={"help": "Path to the training data in JSON/JSONL format."},
+        metadata={"help": "Path to the training data or data config file in YAML"},
     )
     response_template: str = field(
         default=None,
@@ -88,6 +88,10 @@ class DataArguments:
     streaming: bool = field(
         default=False,
         metadata={"help": "set to True to stream data during training"},
+    )
+    dataset_stopping_strategy: str = field(
+        default="all_exhausted",
+        metadata={"help": "data sampling strategy"},
     )
 
 
