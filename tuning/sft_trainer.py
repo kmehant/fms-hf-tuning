@@ -79,6 +79,7 @@ class ConstantLengthDataset(IterableDataset):
         # harded
         self.progress_bar = tqdm(total=105196190)
         self.tokenizer = tokenizer
+        self.logger = logging.get_logger("sft_trainer")
 
     def __len__(self):
         return len(self.dataset)
@@ -97,8 +98,11 @@ class ConstantLengthDataset(IterableDataset):
                 try:
                     sample = next(iterator)
                     # not tokenized
-                    if "contents" in sample:
-                        sample["tokens"] = self.tokenizer.encode(sample["contents"])
+                    if not sample["tokens"]:
+                        try:
+                            sample["tokens"] = self.tokenizer.encode(sample["contents"])
+                        except Exception as e:
+                            self.logger.warning(e)
                         if 128000 == sample["tokens"][0]:
                             sample["tokens"] = sample["tokens"][1:]
                     # add bos token id
@@ -271,9 +275,9 @@ def train(
 
     # TODO: we need to change this, perhaps follow what open instruct does?
     special_tokens_dict = {}
-    # if tokenizer.pad_token is None:
-    #     logger.warning("PAD token set to default, missing in tokenizer")
-    #     special_tokens_dict["pad_token"] = configs.DEFAULT_PAD_TOKEN
+    if tokenizer.pad_token is None:
+        logger.warning("PAD token set to default, missing in tokenizer")
+        special_tokens_dict["pad_token"] = configs.DEFAULT_PAD_TOKEN
     # if tokenizer.eos_token is None:
     #     logger.warning("EOS token set to default, missing in tokenizer")
     #     special_tokens_dict["eos_token"] = configs.DEFAULT_EOS_TOKEN
@@ -340,9 +344,13 @@ def train(
     def data_generator(constant_length_iterator):
         yield from constant_length_iterator
 
-    train_dataset = ConstantLengthDataset(train_dataset, max_seq_length, tokenizer)
+    train_dataset = ConstantLengthDataset(
+        dataset=train_dataset, seq_length=max_seq_length, tokenizer=tokenizer
+    )
     if validation_dataset:
-        validation_dataset = ConstantLengthDataset(validation_dataset, max_seq_length)
+        validation_dataset = ConstantLengthDataset(
+            dataset=validation_dataset, seq_length=max_seq_length, tokenizer=tokenizer
+        )
 
     if not data_args.streaming:
         train_dataset = Dataset.from_generator(
