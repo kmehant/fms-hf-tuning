@@ -261,17 +261,17 @@ def train(
     #             "pad_token": "<pad>",
     #         }
     #     )
-
-    max_seq_length = min(train_args.max_seq_length, tokenizer.model_max_length)
-    logger.info("Max sequence length is %s", max_seq_length)
-    if train_args.max_seq_length > tokenizer.model_max_length:
-        logger.warning(
-            "max_seq_length %s exceeds tokenizer.model_max_length \
-            %s, using tokenizer.model_max_length %s",
-            train_args.max_seq_length,
-            tokenizer.model_max_length,
-            tokenizer.model_max_length,
-        )
+    max_seq_length = train_args.max_seq_length
+    # max_seq_length = min(train_args.max_seq_length, tokenizer.model_max_length)
+    # logger.info("Max sequence length is %s", max_seq_length)
+    # if train_args.max_seq_length > tokenizer.model_max_length:
+    #     logger.warning(
+    #         "max_seq_length %s exceeds tokenizer.model_max_length \
+    #         %s, using tokenizer.model_max_length %s",
+    #         train_args.max_seq_length,
+    #         tokenizer.model_max_length,
+    #         tokenizer.model_max_length,
+    #     )
 
     # TODO: we need to change this, perhaps follow what open instruct does?
     special_tokens_dict = {}
