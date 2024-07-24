@@ -98,18 +98,19 @@ class ConstantLengthDataset(IterableDataset):
                 try:
                     sample = next(iterator)
                     # not tokenized
-                    if not sample["tokens"]:
+                    if "tokens" not in sample or not sample["tokens"]:
                         try:
                             sample["tokens"] = self.tokenizer.encode(sample["contents"])
                         except Exception as e:
                             self.logger.warning(e)
-                        if 128000 == sample["tokens"][0]:
+                        # llama3 tokenzier fix
+                        if self.tokenizer.bos_token_id == sample["tokens"][0]:
                             sample["tokens"] = sample["tokens"][1:]
                     # add bos token id
-                    buffer.append(128000)
+                    buffer.append(self.tokenizer.bos_token_id)
                     buffer.extend(sample["tokens"])
                     # add eos token id
-                    buffer.append(128001)
+                    buffer.append(self.tokenizer.eos_token_id)
                     self.progress_bar.update(1)
                     buffer_len = len(buffer)
                 except StopIteration:
