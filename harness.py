@@ -73,7 +73,7 @@ for combo in tqdm(combinations, total=len(combinations)):
     output_c = ""
     if os.path.exists("./output.json"):
         with open("output.json", "r") as f:
-            output_c = "\n".join(f.readlines)
+            output_c = "\n".join(f.readlines())
             output_c += "\n"
         with open(scanner_logs, "a") as f:
             f.write(output_c)
