@@ -378,7 +378,7 @@ def train(
         for x in framework.get_callbacks_and_ready_for_train(model, accelerator):
             trainer.add_callback(x)
 
-    trainer.train()
+    trainer.train(resume_from_checkpoint=data_args.resume_from_checkpoint)
 
     return trainer
 
