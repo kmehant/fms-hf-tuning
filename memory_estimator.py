@@ -1,6 +1,6 @@
 # Third Party
 from torch import optim
-from torch.distributed._tools.mem_tracker import MemTracker
+from torch.distributed._tools.memory_tracker import MemoryTracker
 from transformers import AutoModelForCausalLM
 import torch
 
@@ -42,25 +42,20 @@ def _init_model_and_args(
     return (model, optimizer, inp)
 
 
+mt = MemoryTracker()
+
 dev = torch.device("cuda")
 device = "cuda"
 torch.cuda.reset_accumulated_memory_stats()
 torch.cuda.reset_peak_memory_stats()
 args = _init_model_and_args(1)
-mem_tracker = MemTracker()
-mem_tracker.track_external(args[0], args[1])
-with mem_tracker as mt:
-    try:
-        train_step(*args)
-    except Exception as e:
-        print("failed")
-        print(e)
-        pass
-
-# tracker_max = mt.get_tracker_snapshot("peak")[dev]["Total"]
-# cuda_max = torch.cuda.max_memory_allocated(dev)
-# accuracy = tracker_max / cuda_max
-# print(cuda_max)
-# print(tracker_max)
-# print(accuracy)
-print(mt.get_tracker_snapshot())
+mt.start_monitor(args[0])
+try:
+    train_step(*args)
+except Exception as e:
+    print("failed")
+    print(e)
+    pass
+mt.stop()
+print(mt.summary())
+mt.show_traces()
