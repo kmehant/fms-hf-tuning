@@ -1,0 +1,7 @@
+train_datasets:
+  - path: /workspace/fms-hf-tuning/tests/data/twitter_complaints_input_output.jsonl
+    prob: 1
+seq_length: 64
+add_bos_token: false
+add_eos_token: false
+streaming: true
