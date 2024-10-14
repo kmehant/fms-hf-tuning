@@ -23,6 +23,7 @@ import time
 import traceback
 
 # Third Party
+from HFResourceScanner import Scanner
 from huggingface_hub.utils._validators import HFValidationError
 from peft.utils.other import fsdp_auto_wrap_policy
 from torch.cuda import OutOfMemoryError
@@ -335,6 +336,7 @@ def train(
     }
     training_args = SFTConfig(**transformer_kwargs)
     logger.warning("dataset kwargs {}".format(data_args.dataset_kwargs))
+    trainer_callbacks.append(Scanner(output_fmt="output.json"))
     trainer = SFTTrainer(
         model=model,
         tokenizer=tokenizer,
