@@ -336,7 +336,7 @@ def train(
     }
     training_args = SFTConfig(**transformer_kwargs)
     logger.warning("dataset kwargs {}".format(data_args.dataset_kwargs))
-    trainer_callbacks.append(Scanner(output_fmt="output.json"))
+    # trainer_callbacks.append(Scanner(output_fmt="output.json"))
     trainer = SFTTrainer(
         model=model,
         tokenizer=tokenizer,
