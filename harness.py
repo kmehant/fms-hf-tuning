@@ -7,7 +7,8 @@ import subprocess
 from tqdm import tqdm
 
 # model_name_or_path_p = ["codellama/CodeLlama-7b-hf"]
-num_hidden_layers_p = [1, 2, 32]
+# num_hidden_layers_p = [1, 2, 32]
+num_hidden_layers_p = [4, 8, 16, 32]  # 1 and 2 passed however 32 failed
 
 # llama 7B 32
 num_attention_heads_p = [16, 32, 64]
@@ -46,13 +47,14 @@ for mc in tqdm(model_combos, total=len(model_combos)):
         model = AutoModelForCausalLM.from_config(config)
         model.save_pretrained(mpath)
     mpaths.append(mpath)
-    tok = AutoTokenizer.from_pretrained("codellama/CodeLlama-7b-hf")
+    tok = AutoTokenizer.from_pretrained("nvidia/Llama-3.1-Nemotron-70B-Instruct-HF")
     tok.save_pretrained(mpath)
 
 
 # mpaths
 
-nproc_per_node_p = [1, 2, 4]
+# nproc_per_node_p = [1, 2, 4]
+nproc_per_node_p = [1, 4, 8]
 
 flash_attn_p = ["true", "false"]
 
@@ -90,10 +92,10 @@ fsdp_flags = (
     ' --fsdp "full_shard auto_wrap" --fsdp_config /workspace/fms-hf-tuning/config.json '
 )
 
-torchrun_cmd = "torchrun --nnodes=1 --node_rank=0 --nproc_per_node={nproc_per_node} --rdzv_id=101 --rdzv_endpoint=0.0.0.0:8888 ./tuning/sft_trainer.py --model_name_or_path {model_name_or_path} --output_dir ./train_output --max_steps 5 --learning_rate 2e-5 --torch_dtype {torch_dtype} --logging_strategy no --save_strategy no --per_device_train_batch_size {per_device_bs} --max_seq_length {max_seq_length} --use_flash_attn {flash_attn} --packing true --training_data_path /workspace/tp/fms-hf-tuning/tests/data/twitter_complaints_input_output_exp.jsonl --dataset_text_field input --gradient_checkpointing {checkpointing}"
+torchrun_cmd = "torchrun --nnodes=1 --node_rank=0 --nproc_per_node={nproc_per_node} --rdzv_id=101 --rdzv_endpoint=0.0.0.0:8888 ./tuning/sft_trainer.py --model_name_or_path {model_name_or_path} --output_dir ./train_output --max_steps 5 --learning_rate 2e-5 --torch_dtype {torch_dtype} --logging_strategy no --save_strategy no --per_device_train_batch_size {per_device_bs} --max_seq_length {max_seq_length} --use_flash_attn {flash_attn} --packing true --training_data_path /workspace/fms-hf-tuning/tests/data/twitter_complaints_input_output_exp.jsonl --dataset_text_field input --gradient_checkpointing {checkpointing}"
 
-scanner_logs = "./scanner_18_oct_logs.jsonl"
-bench_logs = "./bench_18_oct_logs.log"
+scanner_logs = "./scanner_5_nov_logs.jsonl"
+bench_logs = "./bench_5_nov_logs.log"
 
 if os.path.exists(scanner_logs):
     os.remove(scanner_logs)
