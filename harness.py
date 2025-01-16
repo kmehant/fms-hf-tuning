@@ -97,11 +97,11 @@ torchrun_cmd = "torchrun --nnodes=1 --node_rank=0 --nproc_per_node={nproc_per_no
 scanner_logs = "./scanner_5_nov_logs.jsonl"
 bench_logs = "./bench_5_nov_logs.log"
 
-if os.path.exists(scanner_logs):
-    os.remove(scanner_logs)
+# if os.path.exists(scanner_logs):
+#     os.remove(scanner_logs)
 
-if os.path.exists(bench_logs):
-    os.remove(bench_logs)
+# if os.path.exists(bench_logs):
+#     os.remove(bench_logs)
 
 for combo in tqdm(combinations, total=len(combinations)):
     # dy = data_yaml.format(max_seq_len=combo[3])
@@ -122,6 +122,10 @@ for combo in tqdm(combinations, total=len(combinations)):
     # add fsdp flags
     tc = tc + " " + ff
     logs = "Command: \n" + tc + "\n" + str(combo) + "\n"
+    scanner_data = open(scanner_logs, "r").read()
+    if tc in scanner_data:
+        print(f"skipping {tc}")
+        continue
     try:
         result = subprocess.run(
             tc, shell=True, check=True, text=True, capture_output=True
@@ -137,6 +141,12 @@ for combo in tqdm(combinations, total=len(combinations)):
     if os.path.exists("./output.json"):
         with open("output.json", "r") as f:
             output_c = "\n".join(f.readlines())
+            if output_c == "" or not output_c:
+                if "ResourceScanner" in logs:
+                    print("resource scanner logs found")
+                else:
+                    print("not found in logs")
+                exit(1)
             output_c = "Command: \n" + tc + "\n" + str(combo) + "\n" + output_c + "\n"
         with open(scanner_logs, "a") as f:
             f.write(output_c)
