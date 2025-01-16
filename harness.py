@@ -54,7 +54,8 @@ for mc in tqdm(model_combos, total=len(model_combos)):
 # mpaths
 
 # nproc_per_node_p = [1, 2, 4]
-nproc_per_node_p = [1, 4, 8]
+# nproc_per_node_p = [1, 4, 8]
+nproc_per_node_p = [8]
 
 flash_attn_p = ["true", "false"]
 
