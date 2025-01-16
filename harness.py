@@ -145,21 +145,21 @@ for combo in tqdm(combinations, total=len(combinations)):
                     data = {}
                     for ll in llines:
                         if "ResourceScanner Memory Data:  " in ll:
-                            data["mem_data"] = json.loads(
+                            data["mem_data"] = eval(
                                 ll.split("ResourceScanner Memory Data:  ")[1]
                             )
                         if "ResourceScanner Time Data:  " in ll:
-                            data["time_data"] = json.loads(
+                            data["time_data"] = eval(
                                 ll.split("ResourceScanner Time Data:  ")[1]
                             )
                         if "ResourceScanner Tokens Data:  " in ll:
-                            data["tps_data"] = json.loads(
+                            data["tps_data"] = eval(
                                 ll.split("ResourceScanner Tokens Data:  ")[1]
                             )
-                        if "ResourceScanner Net Data:  " in ll:
-                            data["net_data"] = json.loads(
-                                ll.split("ResourceScanner Net Data:  ")[1]
-                            )
+                        # if "ResourceScanner Net Data:  " in ll:
+                        #     data["net_data"] = json.loads(
+                        #         ll.split("ResourceScanner Net Data:  ")[1]
+                        #     )
                     output_c = str(data)
                 # else:
                 #     print("not found in logs")
