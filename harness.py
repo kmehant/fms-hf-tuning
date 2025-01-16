@@ -147,6 +147,8 @@ for combo in tqdm(combinations, total=len(combinations)):
                 else:
                     print("not found in logs")
                     print(logs)
+                    if "failed running" in logs:
+                        continue
                 exit(1)
             output_c = "Command: \n" + tc + "\n" + str(combo) + "\n" + output_c + "\n"
         with open(scanner_logs, "a") as f:
