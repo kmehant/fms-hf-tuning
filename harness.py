@@ -1,5 +1,6 @@
 # Standard
 from itertools import product
+import json
 import os
 import subprocess
 
@@ -144,19 +145,19 @@ for combo in tqdm(combinations, total=len(combinations)):
                     data = {}
                     for ll in llines:
                         if "ResourceScanner Memory Data:  " in ll:
-                            data["mem_data"] = eval(
+                            data["mem_data"] = json.loads(
                                 ll.split("ResourceScanner Memory Data:  ")[1]
                             )
                         if "ResourceScanner Time Data:  " in ll:
-                            data["time_data"] = eval(
+                            data["time_data"] = json.loads(
                                 ll.split("ResourceScanner Time Data:  ")[1]
                             )
                         if "ResourceScanner Tokens Data:  " in ll:
-                            data["tps_data"] = eval(
+                            data["tps_data"] = json.loads(
                                 ll.split("ResourceScanner Tokens Data:  ")[1]
                             )
                         if "ResourceScanner Net Data:  " in ll:
-                            data["net_data"] = eval(
+                            data["net_data"] = json.loads(
                                 ll.split("ResourceScanner Net Data:  ")[1]
                             )
                     output_c = str(data)
