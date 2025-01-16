@@ -146,6 +146,7 @@ for combo in tqdm(combinations, total=len(combinations)):
                     print("resource scanner logs found")
                 else:
                     print("not found in logs")
+                    print(logs)
                 exit(1)
             output_c = "Command: \n" + tc + "\n" + str(combo) + "\n" + output_c + "\n"
         with open(scanner_logs, "a") as f:
