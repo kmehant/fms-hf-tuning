@@ -55,7 +55,7 @@ for mc in tqdm(model_combos, total=len(model_combos)):
 
 # nproc_per_node_p = [1, 2, 4]
 # nproc_per_node_p = [1, 4, 8]
-nproc_per_node_p = [8]
+nproc_per_node_p = [4, 8]
 
 flash_attn_p = ["true", "false"]
 
@@ -95,21 +95,16 @@ fsdp_flags = (
 
 torchrun_cmd = "torchrun --nnodes=1 --node_rank=0 --nproc_per_node={nproc_per_node} --rdzv_id=101 --rdzv_endpoint=0.0.0.0:8888 ./tuning/sft_trainer.py --model_name_or_path {model_name_or_path} --output_dir ./train_output --max_steps 5 --learning_rate 2e-5 --torch_dtype {torch_dtype} --logging_strategy no --save_strategy no --per_device_train_batch_size {per_device_bs} --max_seq_length {max_seq_length} --use_flash_attn {flash_attn} --packing true --training_data_path /workspace/fms-hf-tuning/tests/data/twitter_complaints_input_output_exp.jsonl --dataset_text_field input --gradient_checkpointing {checkpointing}"
 
-scanner_logs = "./scanner_5_nov_logs.jsonl"
-bench_logs = "./bench_5_nov_logs.log"
+scanner_logs = "./scanner_16_jan_logs.jsonl"
+bench_logs = "./bench_16_jan_logs.log"
 
-# if os.path.exists(scanner_logs):
-#     os.remove(scanner_logs)
+if os.path.exists(scanner_logs):
+    os.remove(scanner_logs)
 
-# if os.path.exists(bench_logs):
-#     os.remove(bench_logs)
+if os.path.exists(bench_logs):
+    os.remove(bench_logs)
 
 for combo in tqdm(combinations, total=len(combinations)):
-    # dy = data_yaml.format(max_seq_len=combo[3])
-    # if os.path.exists("./data.yaml"):
-    #     os.remove("./data.yaml")
-    # with open("./data.yaml", "w") as f:
-    #     f.write(dy)
     ff = "" if combo[0] == 1 else fsdp_flags
     tc = torchrun_cmd.format(
         nproc_per_node=combo[0],
@@ -123,10 +118,10 @@ for combo in tqdm(combinations, total=len(combinations)):
     # add fsdp flags
     tc = tc + " " + ff
     logs = "Command: \n" + tc + "\n" + str(combo) + "\n"
-    scanner_data = open(scanner_logs, "r").read()
-    if tc in scanner_data:
-        print(f"skipping {tc}")
-        continue
+    # scanner_data = open(scanner_logs, "r").read()
+    # if tc in scanner_data:
+    #     print(f"skipping {tc}")
+    #     continue
     try:
         result = subprocess.run(
             tc, shell=True, check=True, text=True, capture_output=True
@@ -145,12 +140,32 @@ for combo in tqdm(combinations, total=len(combinations)):
             if output_c == "" or not output_c:
                 if "ResourceScanner" in logs:
                     print("resource scanner logs found")
-                else:
-                    print("not found in logs")
-                    print(logs)
-                    if "failed running" in logs:
-                        continue
-                exit(1)
+                    llines = logs.split("\n")
+                    data = {}
+                    for ll in llines:
+                        if "ResourceScanner Memory Data:  " in ll:
+                            data["mem_data"] = eval(
+                                ll.split("ResourceScanner Memory Data:  ")[1]
+                            )
+                        if "ResourceScanner Time Data:  " in ll:
+                            data["time_data"] = eval(
+                                ll.split("ResourceScanner Time Data:  ")[1]
+                            )
+                        if "ResourceScanner Tokens Data:  " in ll:
+                            data["tps_data"] = eval(
+                                ll.split("ResourceScanner Tokens Data:  ")[1]
+                            )
+                        if "ResourceScanner Net Data:  " in ll:
+                            data["net_data"] = eval(
+                                ll.split("ResourceScanner Net Data:  ")[1]
+                            )
+                    output_c = str(data)
+                # else:
+                #     print("not found in logs")
+                #     print(logs)
+                #     if "failed running" in logs:
+                #         continue
+                # exit(1)
             output_c = "Command: \n" + tc + "\n" + str(combo) + "\n" + output_c + "\n"
         with open(scanner_logs, "a") as f:
             f.write(output_c)
