@@ -56,7 +56,7 @@ for mc in tqdm(model_combos, total=len(model_combos)):
 
 # nproc_per_node_p = [1, 2, 4]
 # nproc_per_node_p = [1, 4, 8]
-nproc_per_node_p = [4, 8]
+nproc_per_node_p = [3, 6]
 
 flash_attn_p = ["true", "false"]
 
@@ -96,8 +96,8 @@ fsdp_flags = (
 
 torchrun_cmd = "torchrun --nnodes=1 --node_rank=0 --nproc_per_node={nproc_per_node} --rdzv_id=101 --rdzv_endpoint=0.0.0.0:8888 ./tuning/sft_trainer.py --model_name_or_path {model_name_or_path} --output_dir ./train_output --max_steps 5 --learning_rate 2e-5 --torch_dtype {torch_dtype} --logging_strategy no --save_strategy no --per_device_train_batch_size {per_device_bs} --max_seq_length {max_seq_length} --use_flash_attn {flash_attn} --packing true --training_data_path /workspace/fms-hf-tuning/tests/data/twitter_complaints_input_output_exp.jsonl --dataset_text_field input --gradient_checkpointing {checkpointing}"
 
-scanner_logs = "./scanner_16_jan_logs.jsonl"
-bench_logs = "./bench_16_jan_logs.log"
+scanner_logs = "./scanner_28_jan_logs.jsonl"
+bench_logs = "./bench_28_jan_logs.log"
 
 if os.path.exists(scanner_logs):
     os.remove(scanner_logs)
