@@ -121,6 +121,7 @@ class RuleEvaluator(EvalWithCompoundTypes):
             "math_floor": math.floor,
             "math_ceil": math.ceil,
             "math_sqrt": math.sqrt,
+            "sum": sum,
             **DEFAULT_FUNCTIONS.copy(),
         }
         super().__init__(functions=all_funcs, names=all_names)

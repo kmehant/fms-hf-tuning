@@ -1,0 +1,34 @@
+controller_metrics:
+  - name: eval_loss_window_10
+    class: HistoryBasedMetric
+    arguments:
+      window_size: 10
+  - name: eval_loss_window_50
+    class: HistoryBasedMetric
+    arguments:
+      window_size: 50
+controllers:
+  - name: save_when_eval_drop_15
+    triggers:
+      - on_step_end
+    rule: len(eval_loss_window_10["metrics"]["eval_loss"]) > 1 and eval_loss_window_10["metrics"]["eval_loss"][-1] <= 0.85 * eval_loss_window_10["metrics"]["eval_loss"][-2]
+    patience:
+      patience_threshold: 1
+    operations:
+      - hfcontrols.should_save
+  # - name: checkpoint_when_eval_conseq_10_steps_no_change
+  #   triggers:
+  #     - on_step_end
+  #   rule: len(eval_loss_window_10["metrics"]["eval_loss"]) > 9 and 0.9 * eval_loss_window_10["metrics"]["eval_loss"][-1] <= sum(eval_loss_window_10["metrics"]["eval_loss"])/len(eval_loss_window_10["metrics"]["eval_loss"]) <= 1.1 * eval_loss_window_10["metrics"]["eval_loss"][-1]
+  #   patience:
+  #     patience_threshold: 10
+  #   operations:
+  #     - hfcontrols.should_save
+  - name: stop_when_eval_conseq_50_steps_no_change
+    triggers:
+      - on_step_end
+    rule: len(eval_loss_window_50["metrics"]["eval_loss"]) > 49 and eval_loss_window_50["metrics"]["epoch"][-1] > 0.30 and 0.95 * eval_loss_window_50["metrics"]["eval_loss"][-1] <= sum(eval_loss_window_50["metrics"]["eval_loss"])/len(eval_loss_window_50["metrics"]["eval_loss"]) <= 1.05 * eval_loss_window_50["metrics"]["eval_loss"][-1]
+    patience:
+      patience_threshold: 20
+    operations:
+      - hfcontrols.should_training_stop
