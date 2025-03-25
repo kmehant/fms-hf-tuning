@@ -224,7 +224,7 @@ def train(
         cache_dir=train_args.cache_dir,
         torch_dtype=get_torch_dtype(model_args.torch_dtype),
         attn_implementation="flash_attention_2" if model_args.use_flash_attn else None,
-        tp_plan="auto",
+        tp_plan="auto" if train_args.tp_size is not None else None,
         tp_size=train_args.tp_size,
     )
 
@@ -314,12 +314,13 @@ def train(
 
     # TODO: lower priority but understand if resizing impacts inference quality and why its needed.
     # It makes sense if we manipulate tokenizer that we also save it and provide it to inference.
-    added_tokens_dict = tokenizer_and_embedding_resize(
-        special_tokens_dict=special_tokens_dict,
-        tokenizer=tokenizer,
-        model=model,
-        multiple_of=model_args.embedding_size_multiple_of,
-    )
+    if len(special_tokens_dict) != 0 or model_args.embedding_size_multiple_of != 1:
+        added_tokens_dict = tokenizer_and_embedding_resize(
+            special_tokens_dict=special_tokens_dict,
+            tokenizer=tokenizer,
+            model=model,
+            multiple_of=model_args.embedding_size_multiple_of,
+        )
 
     # Configure the collator and validate args related to packing prior to formatting the dataset
     data_collator = None
@@ -376,7 +377,15 @@ def train(
         "dataset_kwargs": dataset_kwargs,
     }
     training_args = SFTConfig(**transformer_kwargs, **additional_args)
-
+    # model.save_pretrained("./temp")
+    # model = model_loader(
+    #     "./temp",
+    #     cache_dir=train_args.cache_dir,
+    #     torch_dtype=get_torch_dtype(model_args.torch_dtype),
+    #     attn_implementation="flash_attention_2" if model_args.use_flash_attn else None,
+    #     tp_plan="auto",
+    #     tp_size=train_args.tp_size,
+    # )
     trainer = SFTTrainer(
         model=model,
         tokenizer=tokenizer,
