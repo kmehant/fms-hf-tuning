@@ -224,6 +224,8 @@ def train(
         cache_dir=train_args.cache_dir,
         torch_dtype=get_torch_dtype(model_args.torch_dtype),
         attn_implementation="flash_attention_2" if model_args.use_flash_attn else None,
+        tp_plan="auto",
+        tp_size=train_args.tp_size,
     )
 
     # TODO: Move these to a config as well

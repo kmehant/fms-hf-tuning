@@ -190,6 +190,10 @@ class TrainingArguments(transformers.TrainingArguments):
             Other possible values are 'debug', 'info', 'warning', 'error' and 'critical'"
         },
     )
+    tp_size: Optional[int] = field(
+        default=None,
+        metadata={"help": "tensor parallel degree."},
+    )
 
 
 @dataclass
