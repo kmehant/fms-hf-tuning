@@ -386,6 +386,7 @@ def train(
     #     tp_plan="auto",
     #     tp_size=train_args.tp_size,
     # )
+    print(model)
     trainer = SFTTrainer(
         model=model,
         tokenizer=tokenizer,
