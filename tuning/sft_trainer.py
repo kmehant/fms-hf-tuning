@@ -387,7 +387,7 @@ def train(
     #     tp_size=train_args.tp_size,
     # )
     print(model)
-    print(model.model.lm_head.weight.size())
+    print(model.lm_head.weight.size())
     trainer = SFTTrainer(
         model=model,
         tokenizer=tokenizer,
