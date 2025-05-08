@@ -117,4 +117,5 @@ class SumLossSFTTrainer(SFTTrainer):
         shift_labels = shift_labels.to(shift_logits.device)
         loss = loss_fct(shift_logits, shift_labels)
 
+        print("LOSS PER RANK: ", torch.distributed.get_rank(), loss)
         return (loss, outputs) if return_outputs else loss
