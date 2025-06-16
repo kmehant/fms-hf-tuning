@@ -16,34 +16,47 @@
 import os
 
 # Third Party
-from torch.utils.data import IterableDataset
+from torch.utils.data import DataLoader, Dataset, IterableDataset
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
+
+# First Party
+from transformers import AutoTokenizer
 
 # Local
 from tuning.odm.mixers import RLAgent
 
 
-from torch.utils.data import DataLoader, Dataset
-from transformers import AutoTokenizer
-import torch
-
-
 class SimpleTextDataset(Dataset):
     def __init__(self, texts, tokenizer, max_length=512):
         self.texts = texts
-        self.inputs = [tokenizer(text, return_tensors="pt", truncation=True, max_length=max_length, padding="max_length") for text in texts]
-        self.texts = [text for text, ip in zip(self.texts, self.inputs) if ip['input_ids'][0][-1] == tokenizer.pad_token_id]
-        self.inputs = [ip for ip in self.inputs if ip['input_ids'][0][-1] == tokenizer.pad_token_id]
+        self.inputs = [
+            tokenizer(
+                text,
+                return_tensors="pt",
+                truncation=True,
+                max_length=max_length,
+                padding="max_length",
+            )
+            for text in texts
+        ]
+        self.texts = [
+            text
+            for text, ip in zip(self.texts, self.inputs)
+            if ip["input_ids"][0][-1] == tokenizer.pad_token_id
+        ]
+        self.inputs = [
+            ip for ip in self.inputs if ip["input_ids"][0][-1] == tokenizer.pad_token_id
+        ]
 
     def __len__(self):
         return len(self.inputs)
 
     def __getitem__(self, idx):
         input = self.inputs[idx]
-        input_ids = input['input_ids'].squeeze(0)
-        attention_mask = input['attention_mask'].squeeze(0)
+        input_ids = input["input_ids"].squeeze(0)
+        attention_mask = input["attention_mask"].squeeze(0)
 
         labels = input_ids.clone()
         labels[attention_mask == 0] = -100  # <== mask pad tokens
@@ -53,16 +66,17 @@ class SimpleTextDataset(Dataset):
 
         # Find the last non-padding token
         last_token_index = attention_mask.nonzero(as_tuple=True)[0][-1]
-        labels[last_token_index] = input_ids[last_token_index]  # Only train on last token
+        labels[last_token_index] = input_ids[
+            last_token_index
+        ]  # Only train on last token
         ####################
 
         return {
-            'input_ids': input_ids,
-            'attention_mask': attention_mask,
-            'labels': labels,
-            'text': self.texts[idx]
+            "input_ids": input_ids,
+            "attention_mask": attention_mask,
+            "labels": labels,
+            "text": self.texts[idx],
         }
-
 
 
 class OnlineDataset(IterableDataset):
@@ -88,14 +102,14 @@ class OnlineDataset(IterableDataset):
     def __iter__(self):
         length = len(self)
         for i in range(length // self.batch_size):
-            if not self.ready_for_iteration:
-                # TODO: Training step callback not needed after each iteration, should be able to handle gradient accumulation and multi-gpu logic
-                #  eg: iter called k = (global bs / bs) times then training_step_callback called once with list of training signals of size k
-                #  Note: __iter__ should call __get_next_domain__ k times and training_step_callback should call __take_training_signals__ k times
-                #  __get_next_domain__ and __take_training_signals__ should not worry about any of the gradient accumulation or multi gpu logic
-                raise RuntimeError(
-                    "Training step callback not called before yielding next batch. Ensure to call training_step_callback after each training step."
-                )
+            # if not self.ready_for_iteration:
+            #     # TODO: Training step callback not needed after each iteration, should be able to handle gradient accumulation and multi-gpu logic
+            #     #  eg: iter called k = (global bs / bs) times then training_step_callback called once with list of training signals of size k
+            #     #  Note: __iter__ should call __get_next_domain__ k times and training_step_callback should call __take_training_signals__ k times
+            #     #  __get_next_domain__ and __take_training_signals__ should not worry about any of the gradient accumulation or multi gpu logic
+            #     raise RuntimeError(
+            #         "Training step callback not called before yielding next batch. Ensure to call training_step_callback after each training step."
+            #     )
             self.current_domain = self.__get_next_domain__()
             self.domain_logs.append(self.current_domain)
             for j in range(self.batch_size):
@@ -119,11 +133,11 @@ class OnlineDataset(IterableDataset):
         :param loss: The loss or reward signal to process.
         :return:
         """
-        if self.ready_for_iteration:
-            raise RuntimeError(
-                "Ensure a new batch is yielded before calling training_step_callback."
-            )
-        self.ready_for_iteration = True
+        # if self.ready_for_iteration:
+        #     raise RuntimeError(
+        #         "Ensure a new batch is yielded before calling training_step_callback."
+        #     )
+        # self.ready_for_iteration = True
         assert self.current_domain is not None
         batch["metadata"] = {"domain_index": self.current_domain}
         self.__take_training_signals__(batch, loss)
