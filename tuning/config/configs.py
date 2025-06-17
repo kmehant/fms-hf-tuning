@@ -193,6 +193,13 @@ class DataArguments:
     odm_dataset_train_samples: int = field(
         default=10, metadata={"help": "number of samples per domain for training"}
     )
+    
+    odm_sample_interval: int = field(
+        default=10, metadata={"help": "odm mixer sampling interval"}
+    )
+    odm_update_interval: int = field(
+        default=10, metadata={"help": "odm mixer update interval"}
+    )
 
     def __post_init__(self):
         def unescape(s):

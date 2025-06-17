@@ -156,8 +156,8 @@ class OnlineDataset(IterableDataset):
 
 
 class UniformDataMixing(OnlineDataset):
-    def __init__(self, datasets, model, **kwargs):
-        super().__init__(datasets, model, **kwargs)
+    def __init__(self, datasets, model, sample_interval=10, update_interval=10, **kwargs):
+        super().__init__(datasets, model, sample_interval, update_interval, **kwargs)
         self.num_domains = len(self.datasets)
         self.rl_agent = RLAgent([1 for _ in range(self.num_domains)])
 
@@ -169,8 +169,8 @@ class UniformDataMixing(OnlineDataset):
 
 
 class StaticDataMixing(OnlineDataset):
-    def __init__(self, datasets, model, weights, **kwargs):
-        super().__init__(datasets, model, **kwargs)
+    def __init__(self, datasets, model, sample_interval=10, update_interval=10, weights=None, **kwargs):
+        super().__init__(datasets, model, sample_interval, update_interval, **kwargs)
         self.num_domains = len(self.datasets)
         assert len(weights) == self.num_domains
         self.rl_agent = RLAgent(weights)
@@ -183,8 +183,8 @@ class StaticDataMixing(OnlineDataset):
 
 
 class OnlineDataMixing(OnlineDataset):
-    def __init__(self, datasets, model, alpha=1.0, **kwargs):
-        super().__init__(datasets, model, **kwargs)
+    def __init__(self, datasets, model, sample_interval=10, update_interval=10, alpha=1.0, **kwargs):
+        super().__init__(datasets, model, sample_interval, update_interval, **kwargs)
         self.num_domains = len(self.datasets)
         self.rl_agent = RLAgent([1 for _ in range(self.num_domains)], alpha=alpha)
 

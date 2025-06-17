@@ -75,6 +75,8 @@ def get_odm_dataset(
     method="UniformDataMixing",
     num_samples=10,
     alpha=1.0,
+    sample_interval=10, 
+    update_interval=10,
 ):
 
     texts = []
@@ -100,8 +102,8 @@ def get_odm_dataset(
     for tlp, ds in zip(task_lang, all_ds):
         print(f"{tlp}: {len(ds)}")
 
-    dataset = UniformDataMixing(all_ds, model)
+    dataset = UniformDataMixing(all_ds, model, sample_interval, update_interval)
     if method == "OnlineDataMixing":
-        dataset = OnlineDataMixing(all_ds, model, alpha=alpha)
+        dataset = OnlineDataMixing(all_ds, model, sample_interval, update_interval, alpha=alpha)
 
     return dataset

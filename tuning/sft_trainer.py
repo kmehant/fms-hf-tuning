@@ -377,6 +377,8 @@ def train(
             data_args.odm_strategy,
             data_args.odm_dataset_train_samples,
             data_args.odm_alpha,
+            data_args.odm_sample_interval,
+            data_args.odm_update_interval,
         )
 
         data_collator = None
