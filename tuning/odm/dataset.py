@@ -90,8 +90,8 @@ class OnlineDataset(IterableDataset):
         self.sample_interval = sample_interval
         # update interval for the mixer. Here the interval is in the units of steps / batches
         self.update_interval = update_interval
-        self.sample_iter = 1
-        self.update_iter = 1
+        self.sample_iter = 0
+        self.update_iter = 0
 
     def __len__(self):
         return sum(len(dataset) for dataset in self.datasets)
