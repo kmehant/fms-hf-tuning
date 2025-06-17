@@ -379,6 +379,8 @@ def train(
             train_args.per_device_train_batch_size,
             data_args.odm_alpha,
         )
+        for i in formatted_train_dataset:
+            print(i)
         data_collator = DataCollatorForSeq2Seq(
             tokenizer=tokenizer, padding=True, max_length=train_args.max_seq_length
         )
