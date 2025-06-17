@@ -797,7 +797,6 @@ class DataLoaderDispatcher(DataLoaderAdapter, DataLoaderStateMixin):
                         )
                     self._update_state_dict()
                     batch = next(iterator)
-                    print("batch", batch)
                 else:
                     # num_processes batches of the main iterator are concatenated then dispatched and split.
                     # We add the batches one by one so we have the remainder available when drop_last=False.
