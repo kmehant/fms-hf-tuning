@@ -90,6 +90,9 @@ class OnlineDataset(IterableDataset):
         self.sample_interval = sample_interval
         # update interval for the mixer. Here the interval is in the units of steps / batches
         self.update_interval = update_interval
+        
+        print("sample interval", self.sample_interval)
+        print("update interval", self.update_interval)
         self.sample_iter = 0
         self.update_iter = 0
 
@@ -105,6 +108,8 @@ class OnlineDataset(IterableDataset):
             if self.sample_iter % self.sample_interval == 0:
                 self.current_domain = self.sample()
             self.sample_iter += 1
+            print("current_domain: ", self.current_domain)
+            print("self.sample_iter: ", self.sample_iter)
             self.domain_logs.append(self.current_domain)
             try:
                 sample = next(self.dataset_iters[self.current_domain])
