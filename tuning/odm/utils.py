@@ -94,49 +94,8 @@ def get_odm_dataset(
     tasks,
     method="UniformDataMixing",
     num_samples=10,
-    batch_size=4,
     alpha=1.0,
 ):
-    # def plot():
-    #     print(f"Plotting to {method}/{now}...")
-    #     # Sampling probability plot
-    #     for tlp in task_lang:
-    #         plt.plot(p[tlp], label=tlp)
-    #     plt.xlabel('Batch Index')
-    #     plt.ylabel('Sampling Probability')
-    #     plt.title(f'Sampling Probabilities Over Batches ({method})')
-    #     plt.legend()
-    #     plt.savefig(f"{method}/probabilities_{now}.png")
-    #     plt.close()
-
-    #     # Loss plot
-    #     plt.title("Loss")
-    #     plt.plot(losses)
-    #     plt.xlabel('Batch Index')
-    #     plt.ylabel('Loss')
-    #     plt.savefig(f"{method}/losses_{now}.png")
-    #     plt.close()
-
-    #     # Learning rate plot
-    #     plt.title("Learning Rate")
-    #     plt.plot(optimizer_lrs)
-    #     plt.xlabel('Batch Index')
-    #     plt.ylabel('Learning Rate')
-    #     plt.savefig(f"{method}/lr_{now}.png")
-
-    #     # Domain logs plot
-    #     domain_logs = np.array(dataset.domain_logs)
-    #     one_hot = np.zeros((len(task_lang), len(domain_logs)), dtype=int)
-    #     one_hot[domain_logs, np.arange(len(domain_logs))] = 1
-    #     cumulative_counts = np.cumsum(one_hot, axis=1)
-    #     plt.title("Domain Sampling Counts")
-    #     for i, tlp in enumerate(task_lang):
-    #         plt.plot(cumulative_counts[i], label=tlp)
-    #     plt.xlabel('Batch Index')
-    #     plt.ylabel('Domain Sampling Counts')
-    #     plt.legend()
-    #     plt.savefig(f"{method}/sampling_counts_{now}.png")
-    #     plt.close()
 
     texts = []
     tasks = set(tasks)
@@ -161,64 +120,8 @@ def get_odm_dataset(
     for tlp, ds in zip(task_lang, all_ds):
         print(f"{tlp}: {len(ds)}")
 
-    dataset = UniformDataMixing(all_ds, model, batch_size=batch_size)
-    if method == "PrevLossDiff":
-        dataset = PrevLossDiff(all_ds, model, batch_size=batch_size)
-    elif method == "OnlineDataMixing":
-        dataset = OnlineDataMixing(all_ds, model, batch_size=batch_size, alpha=alpha)
-    elif method == "CurrentLossDiff":
-        dataset = CurrentLossDiff(all_ds, model, batch_size=batch_size)
+    dataset = UniformDataMixing(all_ds, model)
+    if method == "OnlineDataMixing":
+        dataset = OnlineDataMixing(all_ds, model, alpha=alpha)
 
     return dataset
-
-    # move this to trainer
-    # optimizer = AdamW(model.parameters(), lr=lr)
-    # model.train()
-
-    # total_iters = min(iterations, len(dataloader)) if iterations is not None else len(dataloader)
-
-    # # Linear decay from lr to 0.1 * lr
-    # scheduler = LambdaLR(optimizer, lr_lambda=lambda step: max(0.1, 1 - 0.9 * (step / total_iters)))
-    # optimizer_lrs = []
-    # p = defaultdict(list)
-    # losses = []
-
-    # os.makedirs(method, exist_ok=True)
-    # now_time = datetime.datetime.now()
-    # now = now_time.strftime("%Y-%m-%d_%H-%M-%S")
-
-    # for i, batch in enumerate(dataloader):
-    #     input_ids = batch['input_ids'].to(model.device)
-    #     attention_mask = batch['attention_mask'].to(model.device)
-    #     labels = batch['labels'].to(model.device)
-    #     text = batch['text']
-    #     outputs = model(input_ids=input_ids, attention_mask=attention_mask, labels=labels)
-    #     loss = outputs.loss
-    #     losses.append(loss.item())
-    #     loss.backward()
-    #     optimizer.step()
-    #     optimizer.zero_grad()
-    #     optimizer_lrs.append(optimizer.param_groups[0]['lr'])
-    #     scheduler.step()
-    #     if i % every == 0:
-    #         print(f"------{method}------")
-    #         print("Iteration: {}/{}\tLoss: {}\nProbabilities: {}\n".format(i, total_iters, loss,
-    #                                                                    dataset.rl_agent._probabilities))
-    #         if i > 0 and intermediate_eval:
-    #             evaluate(model, tokenizer, tasks, languages, num_samples=num_inter_samples)
-    #         plot()
-
-    #         # Time taken and ETA
-    #         elapsed = (datetime.datetime.now() - now_time).total_seconds()
-    #         eta_seconds = elapsed / (i + 1) * (total_iters - i - 1)
-    #         eta_minutes = eta_seconds / 60
-    #         print(f"\nTime taken: {elapsed/60:.1f} min(s), ETA: {eta_minutes:.1f} min(s)")
-    #         print('---------------------------')
-    #         model.train()
-    #     for tlp, prob in zip(task_lang, dataset.rl_agent._probabilities):
-    #         p[tlp].append(prob)
-    #     dataset.training_step_callback(batch, loss.item())
-    #     if i == total_iters:
-    #         break
-
-    # plot()
