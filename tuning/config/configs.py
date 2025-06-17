@@ -156,7 +156,7 @@ class DataArguments:
         },
     )
 
-    odm_alpha: str = field(
+    odm_alpha: float = field(
         default=None,
         metadata={"help": "Alpha value for RL agent."},
     )
