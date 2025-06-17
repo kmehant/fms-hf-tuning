@@ -2621,6 +2621,7 @@ class Trainer:
                         # additional information for odm
                         self.state.loss = tr_loss
                         self.state.dataset = epoch_dataloader.dataset
+                        print("in training loop", epoch_dataloader.dataset)
                         self.state.inputs = inputs
                         ###
                         self.control = self.callback_handler.on_step_end(args, self.state, self.control)
