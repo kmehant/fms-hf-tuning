@@ -133,6 +133,7 @@ class OnlineDataset(IterableDataset):
         # mixer updates should happen in controlled manner through update_interval
         if self.update_iter % self.update_interval == 0:
             batch["metadata"] = {"domain_index": self.current_domain}
+            print("step: mixer update")
             self.update(batch, train_loss, eval_loss)
         self.update_iter += 1
 
@@ -189,6 +190,7 @@ class OnlineDataMixing(OnlineDataset):
         self.rl_agent = RLAgent([1 for _ in range(self.num_domains)], alpha=alpha)
 
     def sample(self):
+        print("step: mixer sample")
         return self.rl_agent.sample()
 
     def update(self, batch, train_loss, eval_loss):
