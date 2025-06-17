@@ -108,8 +108,6 @@ class OnlineDataset(IterableDataset):
             if self.sample_iter % self.sample_interval == 0:
                 self.current_domain = self.sample()
             self.sample_iter += 1
-            print("current_domain: ", self.current_domain)
-            print("self.sample_iter: ", self.sample_iter)
             self.domain_logs.append(self.current_domain)
             try:
                 sample = next(self.dataset_iters[self.current_domain])
@@ -138,7 +136,6 @@ class OnlineDataset(IterableDataset):
         # mixer updates should happen in controlled manner through update_interval
         if self.update_iter % self.update_interval == 0:
             batch["metadata"] = {"domain_index": self.current_domain}
-            print("step: mixer update")
             self.update(batch, train_loss, eval_loss)
         self.update_iter += 1
 
@@ -195,11 +192,11 @@ class OnlineDataMixing(OnlineDataset):
         self.rl_agent = RLAgent([1 for _ in range(self.num_domains)], alpha=alpha)
 
     def sample(self):
-        print("step: mixer sample", self.rl_agent.sample())
         return self.rl_agent.sample()
 
     def update(self, batch, train_loss, eval_loss):
         domain_index = batch["metadata"]["domain_index"]
         # prevents overflow while calculating the exponential of the reward
         reward = np.clip(train_loss, 0, 5)
+        print("probs", self.rl_agent.update(domain_index, reward=reward))
         self.rl_agent.update(domain_index, reward=reward)
