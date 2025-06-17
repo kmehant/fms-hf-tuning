@@ -115,7 +115,8 @@ def get_cluster_input():
             )
             if not same_network:
                 rdzv_backend = _ask_field(
-                    "What rendezvous backend will you use? ('static', 'c10d', ...): ", default="static"
+                    "What rendezvous backend will you use? ('static', 'c10d', ...): ",
+                    default="static",
                 )
         debug = _ask_field(
             "Should distributed operations be checked while running for errors? This can avoid timeout issues but will be slower. [yes/NO]: ",
@@ -160,8 +161,12 @@ def get_cluster_input():
                     str,
                     default="~/hostfile",
                 )
-                mpirun_config["mpirun_hostfile"] = os.path.expanduser(mpirun_hostfile.strip())
-                mpirun_config["mpirun_ccl"] = _ask_field("Enter the number of oneCCL worker threads [1]: ", default=1)
+                mpirun_config["mpirun_hostfile"] = os.path.expanduser(
+                    mpirun_hostfile.strip()
+                )
+                mpirun_config["mpirun_ccl"] = _ask_field(
+                    "Enter the number of oneCCL worker threads [1]: ", default=1
+                )
 
     dynamo_config = {}
     use_dynamo = _ask_field(
@@ -228,9 +233,9 @@ def get_cluster_input():
         )
         if use_deepspeed:
             distributed_type = DistributedType.DEEPSPEED
-            assert is_deepspeed_available(), (
-                "DeepSpeed is not installed => run `pip3 install deepspeed` or build it from source"
-            )
+            assert (
+                is_deepspeed_available()
+            ), "DeepSpeed is not installed => run `pip3 install deepspeed` or build it from source"
 
         if distributed_type == DistributedType.DEEPSPEED:
             use_deepspeed_config = _ask_field(
@@ -256,10 +261,14 @@ def get_cluster_input():
                 deepspeed_devices = ["none", "cpu", "nvme"]
                 if deepspeed_config["zero_stage"] >= 2:
                     deepspeed_config["offload_optimizer_device"] = _ask_options(
-                        "Where to offload optimizer states?", deepspeed_devices, lambda x: deepspeed_devices[int(x)]
+                        "Where to offload optimizer states?",
+                        deepspeed_devices,
+                        lambda x: deepspeed_devices[int(x)],
                     )
                     deepspeed_config["offload_param_device"] = _ask_options(
-                        "Where to offload parameters?", deepspeed_devices, lambda x: deepspeed_devices[int(x)]
+                        "Where to offload parameters?",
+                        deepspeed_devices,
+                        lambda x: deepspeed_devices[int(x)],
                     )
                     if deepspeed_config["offload_param_device"] == "nvme":
                         deepspeed_config["offload_param_nvme_path"] = _ask_field(
@@ -330,7 +339,10 @@ def get_cluster_input():
                     lambda x: DEEPSPEED_MULTINODE_LAUNCHERS[int(x)],
                 )
 
-                if deepspeed_config["deepspeed_multinode_launcher"] != DEEPSPEED_MULTINODE_LAUNCHERS[1]:
+                if (
+                    deepspeed_config["deepspeed_multinode_launcher"]
+                    != DEEPSPEED_MULTINODE_LAUNCHERS[1]
+                ):
                     deepspeed_config["deepspeed_hostfile"] = _ask_field(
                         "DeepSpeed configures multi-node compute resources with hostfile. "
                         "Each row is of the format `hostname slots=[num_gpus]`, e.g., `localhost slots=2`; "
@@ -389,7 +401,9 @@ def get_cluster_input():
                 lambda x: int(x) + 1,
                 default=1,
             )
-            fsdp_version = fsdp_config["fsdp_version"]  # extract to a variable to simplify usage later
+            fsdp_version = fsdp_config[
+                "fsdp_version"
+            ]  # extract to a variable to simplify usage later
 
             if fsdp_version == 1:
                 sharding_strategy_query = "What should be your sharding strategy?"
@@ -440,7 +454,9 @@ def get_cluster_input():
                 )
             # Removed in FSDP2, ask for user input for FSDP1
             if fsdp_version == 1:
-                fsdp_backward_prefetch_query = "What should be your FSDP's backward prefetch policy?"
+                fsdp_backward_prefetch_query = (
+                    "What should be your FSDP's backward prefetch policy?"
+                )
                 fsdp_config["fsdp_backward_prefetch"] = _ask_options(
                     fsdp_backward_prefetch_query,
                     FSDP_BACKWARD_PREFETCH,
@@ -451,7 +467,9 @@ def get_cluster_input():
             fsdp_config["fsdp_state_dict_type"] = _ask_options(
                 fsdp_state_dict_type_query,
                 FSDP_STATE_DICT_TYPE if fsdp_version == 1 else FSDP2_STATE_DICT_TYPE,
-                lambda x: FSDP_STATE_DICT_TYPE[int(x)] if fsdp_version == 1 else FSDP2_STATE_DICT_TYPE[int(x)],
+                lambda x: FSDP_STATE_DICT_TYPE[int(x)]
+                if fsdp_version == 1
+                else FSDP2_STATE_DICT_TYPE[int(x)],
                 default=0,
             )
             # Not implemented in FSDP2, ask for user input for FSDP1
@@ -602,7 +620,11 @@ def get_cluster_input():
             default=1,
             error_message="Please enter an integer.",
         )
-    elif distributed_type in [DistributedType.FSDP, DistributedType.DEEPSPEED, DistributedType.MEGATRON_LM]:
+    elif distributed_type in [
+        DistributedType.FSDP,
+        DistributedType.DEEPSPEED,
+        DistributedType.MEGATRON_LM,
+    ]:
         num_processes = _ask_field(
             "How many GPU(s) should be used for distributed training? [1]:",
             int,
@@ -612,7 +634,11 @@ def get_cluster_input():
     else:
         num_processes = 1
 
-    if (distributed_type == DistributedType.MULTI_GPU) and (num_machines == 1) and (num_processes == 1):
+    if (
+        (distributed_type == DistributedType.MULTI_GPU)
+        and (num_machines == 1)
+        and (num_processes == 1)
+    ):
         raise ValueError(
             f"Specified distributed type {distributed_type} but only using 1 GPU on a single machine. Please select `No distributed training` for the type of machine you are using."
         )
@@ -650,7 +676,11 @@ def get_cluster_input():
 
     # CPU affinity is only supported on NVIDIA hardware for now
     enable_cpu_affinity = False
-    if distributed_type in (DistributedType.NO, DistributedType.MULTI_GPU) and not use_cpu and not use_mps:
+    if (
+        distributed_type in (DistributedType.NO, DistributedType.MULTI_GPU)
+        and not use_cpu
+        and not use_mps
+    ):
         enable_cpu_affinity = _ask_field(
             "Would you like to enable numa efficiency? (Currently only supported on NVIDIA hardware). [yes/NO]: ",
             _convert_yes_no_to_bool,
@@ -708,7 +738,9 @@ def get_cluster_input():
                     )
                     tpu_command_file = os.path.abspath(tpu_command_file)
                 else:
-                    print("Please enter each command seperately you wish to run on startup in each pod.")
+                    print(
+                        "Please enter each command seperately you wish to run on startup in each pod."
+                    )
                     tpu_commands = []
                     another_command = True
                     while another_command:
@@ -746,7 +778,9 @@ def get_cluster_input():
             )
             if mixed_precision == "fp8":
                 if not is_fp8_available():
-                    raise ValueError("FP8 (either Transformer Engine or MSAMP) is not installed on this machine.")
+                    raise ValueError(
+                        "FP8 (either Transformer Engine or MSAMP) is not installed on this machine."
+                    )
                 fp8_config = {}
                 fp8_config["backend"] = _ask_options(
                     "Which FP8 backend do you want to use?",
@@ -755,7 +789,9 @@ def get_cluster_input():
                 )
                 if fp8_config["backend"] == "TE":
                     if not is_transformer_engine_available():
-                        raise ValueError("TransformersEngine was selected, but it is not installed on this machine.")
+                        raise ValueError(
+                            "TransformersEngine was selected, but it is not installed on this machine."
+                        )
                     fp8_config["use_autocast_during_eval"] = _ask_field(
                         "Do you want to use FP8 autocast during eval mode? Generally better metrics are found when this is disabled [yes/NO]: ",
                         _convert_yes_no_to_bool,
@@ -813,7 +849,9 @@ def get_cluster_input():
 
                 elif fp8_config["backend"] == "MSAMP":
                     if not is_msamp_available():
-                        raise ValueError("MSAMP was selected, but it is not installed on this machine.")
+                        raise ValueError(
+                            "MSAMP was selected, but it is not installed on this machine."
+                        )
                     fp8_config["optimization_level"] = _ask_options(
                         "Which optimization level should be used?",
                         ["O1", "O2"],
@@ -828,7 +866,8 @@ def get_cluster_input():
 
     if distributed_type == DistributedType.XLA and mixed_precision == "bf16":
         tpu_downcast_bf16 = _ask_field(
-            "Should `torch.float` be cast as `bfloat16` and `torch.double` remain `float32` on TPUs?", default="no"
+            "Should `torch.float` be cast as `bfloat16` and `torch.double` remain `float32` on TPUs?",
+            default="no",
         )
 
     return ClusterConfig(
