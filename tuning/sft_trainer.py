@@ -379,9 +379,7 @@ def train(
             data_args.odm_alpha,
         )
 
-        data_collator = DataCollatorForSeq2Seq(
-            tokenizer=tokenizer, padding=True, max_length=train_args.max_seq_length
-        )
+        data_collator = None
 
     additional_metrics["data_preprocessing_time"] = (
         time.time() - data_preprocessing_time
