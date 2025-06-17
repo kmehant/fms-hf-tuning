@@ -348,6 +348,7 @@ def train(
     data_preprocessing_time = time.time()
     formatted_validation_dataset = None
     formatted_train_dataset = None
+    dl = None
     if data_args.odm_strategy is None:
         (
             formatted_train_dataset,
@@ -379,8 +380,12 @@ def train(
             train_args.per_device_train_batch_size,
             data_args.odm_alpha,
         )
-        for i in formatted_train_dataset:
-            print(i)
+        # Third Party
+        import torch
+
+        dl = torch.utils.data.DataLoader(
+            formatted_train_dataset, batch_size=train_args.per_device_train_batch_size
+        )
         data_collator = DataCollatorForSeq2Seq(
             tokenizer=tokenizer, padding=True, max_length=train_args.max_seq_length
         )
@@ -457,6 +462,10 @@ def train(
         callbacks=trainer_callbacks,
         peft_config=peft_config,
     )
+
+    adl = trainer.accelerator.prepare(dl)
+    for i in adl:
+        print(i)
 
     # We track additional metrics and experiment metadata after trainer object creation
     # this ensure that the process is not repeated multiple times for FSDP runs.
