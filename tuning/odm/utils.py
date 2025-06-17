@@ -104,6 +104,7 @@ def get_odm_dataset(
 
     dataset = UniformDataMixing(all_ds, model, sample_interval, update_interval)
     if method == "OnlineDataMixing":
+        print("using online data mixing")
         dataset = OnlineDataMixing(all_ds, model, sample_interval, update_interval, alpha=alpha)
 
     return dataset
