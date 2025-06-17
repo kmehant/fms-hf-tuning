@@ -190,7 +190,7 @@ class OnlineDataMixing(OnlineDataset):
         self.rl_agent = RLAgent([1 for _ in range(self.num_domains)], alpha=alpha)
 
     def sample(self):
-        print("step: mixer sample")
+        print("step: mixer sample", self.rl_agent.sample())
         return self.rl_agent.sample()
 
     def update(self, batch, train_loss, eval_loss):
