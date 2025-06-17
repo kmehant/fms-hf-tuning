@@ -12,32 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Standard
-from collections import defaultdict
-import datetime
-import os
 
 # Third Party
 from datasets import load_dataset
-from torch.optim import AdamW
-from torch.optim.lr_scheduler import LambdaLR
-from torch.utils.data import DataLoader
-from tqdm import tqdm
-import matplotlib.pyplot as plt
-import numpy as np
-
-# First Party
-from transformers import AutoTokenizer
 
 # Local
-from tuning.odm.dataset import (
-    CurrentLossDiff,
-    OnlineDataMixing,
-    PrevLossDiff,
-    SimpleTextDataset,
-    UniformDataMixing,
-)
-from tuning.odm.evaluators import evaluate
+from tuning.odm.dataset import OnlineDataMixing, SimpleTextDataset, UniformDataMixing
 
 
 def get_pa_train_dataset(language, n=10):
