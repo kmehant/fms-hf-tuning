@@ -9,4 +9,4 @@ class ODMCallback(TrainerCallback):
     def on_step_end(self, args, state: TrainerState, control, **kwargs):
         state.dataset.update_mixer(state.inputs, state.loss.item(), None)
         with open("./rl_proj.jsonl", "w") as f:
-            f.write(state.dataset.rl_agent._probabilities + "\n")
+            f.write(str(state.dataset.rl_agent._probabilities) + "\n")
