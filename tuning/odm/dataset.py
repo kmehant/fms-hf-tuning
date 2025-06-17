@@ -133,7 +133,7 @@ class OnlineDataset(IterableDataset):
         # mixer updates should happen in controlled manner through update_interval
         if self.update_iter % self.update_interval == 0:
             batch["metadata"] = {"domain_index": self.current_domain}
-            self.update(batch, train_loss)
+            self.update(batch, train_loss, eval_loss)
         self.update_iter += 1
 
     def sample(self):
