@@ -58,6 +58,15 @@ class BNBQLoraConfig(List):
             raise ValueError("quant_type can only be either 'nf4' or 'fp4.")
 
 
+@parsable_dataclass
+@dataclass
+class CompressedTensorsLoraConfig(List):
+
+    # if we only want to quantize the base layer, and defer to the
+    # huggingface to prepare the peft (i.e. lora) model
+    no_peft_model: bool = False
+
+
 @dataclass
 class QuantizedLoraConfig:
 
@@ -66,6 +75,8 @@ class QuantizedLoraConfig:
 
     # to use auto_gptq 4bit lora base layers
     bnb_qlora: BNBQLoraConfig = None
+
+    compressed_tensors: CompressedTensorsLoraConfig = None
 
     def __post_init__(self):
         # ensure nested dataclasses initialized

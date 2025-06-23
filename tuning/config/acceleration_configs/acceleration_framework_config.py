@@ -24,7 +24,11 @@ import yaml
 from .attention_and_distributed_packing import MultiPack, PaddingFree
 from .fast_moe import FastMoe
 from .fused_ops_and_kernels import FastKernelsConfig, FusedLoraConfig
-from .quantized_lora_config import AutoGPTQLoraConfig, BNBQLoraConfig
+from .quantized_lora_config import (
+    AutoGPTQLoraConfig,
+    BNBQLoraConfig,
+    CompressedTensorsLoraConfig,
+)
 from tuning.utils.import_utils import is_fms_accelerate_available
 
 if is_fms_accelerate_available():
@@ -76,6 +80,13 @@ class AccelerationFrameworkConfig:
 
     bitsandbytes: Annotated[
         BNBQLoraConfig,
+        ConfigAnnotation(
+            path="peft.quantization", standalone=True, required_packages=["peft"]
+        ),
+    ] = None
+
+    compressed_tensors: Annotated[
+        CompressedTensorsLoraConfig,
         ConfigAnnotation(
             path="peft.quantization", standalone=True, required_packages=["peft"]
         ),
@@ -143,7 +154,11 @@ class AccelerationFrameworkConfig:
 
         # Check that fused lora must be activated with either auto_gptq or bitsandbytes
         if self.fused_lora is not None:
-            if self.bitsandbytes is None and self.auto_gptq is None:
+            if (
+                self.bitsandbytes is None
+                and self.auto_gptq is None
+                and self.compressed_tensors is None
+            ):
                 raise ValueError(
                     "`--fused_lora` must be accompanied by a quantized base layer"
                     " `--auto_gptq` or `--bitsandbytes`."

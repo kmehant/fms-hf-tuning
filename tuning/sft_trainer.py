@@ -245,6 +245,7 @@ def train(
                     "additional callbacks should be of type TrainerCallback"
                 )
             trainer_callbacks.append(cb)
+    print(quantized_lora_config)
 
     framework = AccelerationFrameworkConfig.from_dataclasses(
         fast_moe_config,
@@ -252,6 +253,8 @@ def train(
         quantized_lora_config,
         fusedops_kernels_config,
     ).get_framework()
+
+    print(framework)
 
     # option to set multimodal var here
     model_load_time = time.time()
@@ -284,7 +287,7 @@ def train(
 
         if framework is not None and framework.requires_custom_loading:
             model_loader = framework.model_loader  # drop-in new loader
-
+        print(model_loader)
         model = model_loader(
             model_args.model_name_or_path,
             cache_dir=train_args.cache_dir,
@@ -359,6 +362,7 @@ def train(
     )
 
     if framework is not None and framework.requires_augmentation:
+        print(framework.requires_augmentation)
         model, (peft_config,) = framework.augmentation(
             model, train_args, modifiable_args=(peft_config,)
         )

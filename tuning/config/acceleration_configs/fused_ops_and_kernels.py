@@ -37,6 +37,7 @@ class FusedLoraConfig(List):
         if self.base_layer is not None and self.base_layer not in {
             "auto_gptq",
             "bitsandbytes",
+            "compressed_tensors",
         }:
             raise ValueError(f"base_layer set to invalid value '{self.base_layer}'")
 
