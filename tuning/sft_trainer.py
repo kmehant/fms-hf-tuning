@@ -43,6 +43,7 @@ import transformers
 from tuning.config import configs, peft_config
 from tuning.config.acceleration_configs import (
     AccelerationFrameworkConfig,
+    ACConfig,
     AttentionAndDistributedPackingConfig,
     FastMoeConfig,
     FusedOpsAndKernelsConfig,
@@ -84,6 +85,7 @@ def train(
         AttentionAndDistributedPackingConfig
     ] = None,
     fast_moe_config: Optional[FastMoeConfig] = None,
+    ac_config: Optional[ACConfig] = None,
     additional_data_handlers: Optional[Dict[str, DataHandler]] = None,
 ) -> tuple[SFTTrainer, dict]:
     """Call the SFTTrainer
@@ -116,6 +118,7 @@ def train(
             fused_lora and fast_kernels must used together (may change in future). \
         attention_and_distributed_packing_config: Used for padding-free attention and multipack. \
         fast_moe_config: Used for ScatterMoE to run MoE models in parallel.
+        ac_config: Used for level AC.
         additional_data_handlers: Dict [str:DataHandler] of any extra data handlers \
                                    to be registered with the data preprocessor
     Returns:
@@ -125,6 +128,9 @@ def train(
     logger, train_args.log_level = set_log_level(
         logger_name="sft_trainer_train", level=train_args.log_level
     )
+
+    if ac_config is not None:
+        train_args.gradient_checkpointing = False
     USE_ALORA = False
     try:
         # Third Party
@@ -246,6 +252,7 @@ def train(
         attention_and_distributed_packing_config,
         quantized_lora_config,
         fusedops_kernels_config,
+        ac_config,
     ).get_framework()
 
     # option to set multimodal var here
@@ -567,6 +574,7 @@ def get_parser():
             FusedOpsAndKernelsConfig,
             AttentionAndDistributedPackingConfig,
             FastMoeConfig,
+            ACConfig,
             TrackerConfigs,
         )
     )
@@ -629,6 +637,8 @@ def parse_arguments(parser, json_config=None):
             Configuration for padding free and packing.
         FastMoeConfig
             Configuration for accelerated MoE.
+        ACConfig
+            Level controlled activation checkpointing
         TrackerConfigs
             Configuration for all trackers.
         dict[str, str]
@@ -648,6 +658,7 @@ def parse_arguments(parser, json_config=None):
             fusedops_kernels_config,
             attention_and_distributed_packing_config,
             fast_moe_config,
+            ac_confg,
             tracker_configs,
         ) = parser.parse_dict(json_config, allow_extra_keys=True)
         peft_method = json_config.get("peft_method")
@@ -667,6 +678,7 @@ def parse_arguments(parser, json_config=None):
             fusedops_kernels_config,
             attention_and_distributed_packing_config,
             fast_moe_config,
+            ac_confg,
             tracker_configs,
             additional,
             _,
@@ -717,6 +729,7 @@ def parse_arguments(parser, json_config=None):
         fusedops_kernels_config,
         attention_and_distributed_packing_config,
         fast_moe_config,
+        ac_confg,
         tracker_configs,
         exp_metadata,
     )
@@ -739,6 +752,7 @@ def main():
             fusedops_kernels_config,
             attention_and_distributed_packing_config,
             fast_moe_config,
+            ac_config,
             tracker_configs,
             exp_metadata,
         ) = parse_arguments(parser, job_config)
@@ -761,6 +775,7 @@ def main():
                 "AADP (fms-acceleration) Config": attention_and_distributed_packing_config,
                 "Fused Ops Kernels Config": fusedops_kernels_config,
                 "Fast MoE Config": fast_moe_config,
+                "AC Config": ac_config,
                 "Trainer Controller Config": trainer_controller_args,
                 "Extra Metadata": exp_metadata,
             }
@@ -807,6 +822,7 @@ def main():
             fusedops_kernels_config=fusedops_kernels_config,
             attention_and_distributed_packing_config=attention_and_distributed_packing_config,
             fast_moe_config=fast_moe_config,
+            ac_config=ac_config,
         )
     except (MemoryError, OutOfMemoryError) as e:
         logger.error(traceback.format_exc())

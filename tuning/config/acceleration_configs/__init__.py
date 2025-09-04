@@ -13,6 +13,7 @@
 # limitations under the License.
 
 # Local
+from .ac import ACConfig
 from .acceleration_framework_config import AccelerationFrameworkConfig
 from .attention_and_distributed_packing import AttentionAndDistributedPackingConfig
 from .callbacks import get_additional_accel_framework_callbacks
