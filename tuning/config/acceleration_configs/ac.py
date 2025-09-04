@@ -29,7 +29,7 @@ except ImportError:
 @parsable_dataclass
 @dataclass
 class AC:
-    level: int = 1
+    level: int = None
 
 
 @dataclass
