@@ -13,23 +13,7 @@
 # limitations under the License.
 
 # Standard
-from dataclasses import dataclass, field
-from typing import Union
-import argparse
-import json
-import os
-
-# Third Party
-from transformers import (
-    Trainer,
-    TrainerCallback,
-    TrainerControl,
-    TrainerState,
-    TrainingArguments,
-)
-from transformers.trainer import TRAINING_ARGS_NAME
-from transformers.trainer_utils import PREFIX_CHECKPOINT_DIR
-import torch
+from dataclasses import dataclass
 
 # Local
 from .utils import ensure_nested_dataclasses_initialized, parsable_dataclass
