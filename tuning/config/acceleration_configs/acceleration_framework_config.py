@@ -21,6 +21,7 @@ import warnings
 import yaml
 
 # Local
+from .ac import AC
 from .attention_and_distributed_packing import MultiPack, PaddingFree
 from .fast_moe import FastMoe
 from .fused_ops_and_kernels import FastKernelsConfig, FusedLoraConfig
@@ -99,6 +100,17 @@ class AccelerationFrameworkConfig:
             standalone=True,
             experimental=True,
             required_packages=["moe"],
+        ),
+    ] = None
+
+    ac: Annotated[
+        AC,
+        ConfigAnnotation(
+            path="training.ac",
+            key="scattermoe",
+            standalone=True,
+            experimental=True,
+            required_packages=["ac"],
         ),
     ] = None
 
