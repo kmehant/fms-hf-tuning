@@ -21,7 +21,7 @@ import warnings
 import yaml
 
 # Local
-from .ac import ACConfig
+from .ac import AC
 from .attention_and_distributed_packing import MultiPack, PaddingFree
 from .fast_moe import FastMoe
 from .fused_ops_and_kernels import FastKernelsConfig, FusedLoraConfig
@@ -104,7 +104,7 @@ class AccelerationFrameworkConfig:
     ] = None
 
     ac: Annotated[
-        ACConfig,
+        AC,
         ConfigAnnotation(
             path="training.ac",
             standalone=True,
