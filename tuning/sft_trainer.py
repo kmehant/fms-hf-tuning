@@ -134,6 +134,7 @@ def train(
     if ac_config is not None and ac_config.ac is None:
         ac_config = None
 
+    print(ac_config)
     USE_ALORA = False
     try:
         # Third Party
