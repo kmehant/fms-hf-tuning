@@ -21,7 +21,7 @@ import warnings
 import yaml
 
 # Local
-from .ac import AC
+from .ac import LAC
 from .attention_and_distributed_packing import MultiPack, PaddingFree
 from .fast_moe import FastMoe
 from .fused_ops_and_kernels import FastKernelsConfig, FusedLoraConfig
@@ -104,9 +104,10 @@ class AccelerationFrameworkConfig:
     ] = None
 
     ac: Annotated[
-        AC,
+        LAC,
         ConfigAnnotation(
             path="training.ac",
+            key="lac",
             standalone=True,
             experimental=True,
             required_packages=["ac"],

@@ -28,14 +28,14 @@ except ImportError:
 
 @parsable_dataclass
 @dataclass
-class AC:
+class LAC:
     level: int = None
 
 
 @dataclass
 class ACConfig:
 
-    ac: AC = None
+    lac: LAC = None
 
     def __post_init__(self):
         # ensure nested dataclasses initialized
