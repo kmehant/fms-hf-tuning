@@ -129,9 +129,9 @@ def train(
         logger_name="sft_trainer_train", level=train_args.log_level
     )
 
-    if ac_config is not None and ac_config.level is not None:
+    if ac_config is not None and ac_config.ac is not None:
         train_args.gradient_checkpointing = False
-    if ac_config is not None and ac_config.level is None:
+    if ac_config is not None and ac_config.ac is None:
         ac_config = None
 
     USE_ALORA = False
