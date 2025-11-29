@@ -117,6 +117,10 @@ RUN dnf config-manager \
     && dnf clean all
 
 ENV LIBRARY_PATH="$CUDA_HOME/lib64/stubs"
+ENV MAMBA_FORCE_BUILD="TRUE"
+ENV MAMBA_SKIP_CUDA_BUILD="TRUE"
+ENV CAUSAL_CONV1D_FORCE_BUILD="TRUE"
+ENV CAUSAL_CONV1D_SKIP_CUDA_BUILD="TRUE"
 
 FROM cuda-devel AS python-installations
 
@@ -141,6 +145,10 @@ RUN --mount=type=cache,target=/home/${USER}/.cache/pip,uid=${USER_UID} \
 COPY --chown=${USER}:root tuning tuning
 COPY .git .git
 COPY pyproject.toml pyproject.toml
+COPY transformers transformers
+COPY fms-acceleration fms-acceleration
+COPY mamba mamba
+COPY causal-conv1d causal-conv1d
 
 # Build a wheel if PyPi wheel_version is empty else download the wheel from PyPi
 RUN if [[ -z "${WHEEL_VERSION}" ]]; \
@@ -150,13 +158,15 @@ RUN if [[ -z "${WHEEL_VERSION}" ]]; \
     ls /tmp/*.whl >/tmp/bdist_name
 
 # Ensures to always build mamba_ssm from source
-ENV PIP_NO_BINARY=mamba-ssm,mamba_ssm
+# ENV PIP_NO_BINARY=mamba-ssm,mamba_ssm
 
 # Install from the wheel
 RUN --mount=type=cache,target=/home/${USER}/.cache/pip,uid=${USER_UID} \
     python -m pip install --user wheel && \
     python -m pip install --user "$(head bdist_name)" && \
-    python -m pip install --user --no-build-isolation "$(head bdist_name)[mamba]"
+    python -m pip install --user ./mamba && \
+    python -m pip install --user ./causal-conv1d
+    # python -m pip install --user --no-build-isolation "$(head bdist_name)[mamba]"
 
 RUN python -m pip install --user --no-build-isolation "$(head bdist_name)[flash-attn]"
 
@@ -166,14 +176,15 @@ RUN python -m pip install --user --no-build-isolation "$(head bdist_name)[flash-
 # fms_acceleration_moe = Parallelized Mixture of Experts
 # fms_acceleration_odm = Online Data Mixing
 RUN if [[ "${ENABLE_FMS_ACCELERATION}" == "true" ]]; then \
-        python -m pip install --user "$(head bdist_name)[fms-accel]"; \
-        python -m fms_acceleration.cli install fms_acceleration_peft; \
-        python -m fms_acceleration.cli install fms_acceleration_foak; \
-        python -m fms_acceleration.cli install fms_acceleration_aadp; \
-        python -m fms_acceleration.cli install fms_acceleration_moe; \
-        python -m fms_acceleration.cli install fms_acceleration_odm; \
+        python -m pip install --user ./fms-acceleration/plugins/framework; \
+        python -m pip install --user ./fms-acceleration/plugins/accelerated-moe; \
+        python -m pip install --user ./fms-acceleration/plugins/attention-and-distributed-packing; \
+        python -m pip install --user ./fms-acceleration/plugins/fused-ops-and-kernels; \
+        python -m pip install --user ./fms-acceleration/plugins/online-data-mixing; \
+        python -m pip install --user ./fms-acceleration/plugins/accelerated-peft; \
+        python -m pip install --user ./fms-acceleration/plugins/mamba-cp; \
     fi
-
+RUN python -m pip install --user ./transformers
 RUN if [[ "${ENABLE_AIM}" == "true" ]]; then \
         python -m pip install --user "$(head bdist_name)[aim]"; \
     fi

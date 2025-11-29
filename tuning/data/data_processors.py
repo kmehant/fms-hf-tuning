@@ -310,7 +310,6 @@ class DataPreProcessor:
                         f"Please explicitly specify the column list or use remove/select handlers."
                     )
                 kwargs["remove_columns"] = column_names
-
             processed_ds[split_name] = ds.map(handler.op, **kwargs)
 
         return processed_ds
