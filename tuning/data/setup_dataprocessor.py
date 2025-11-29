@@ -61,7 +61,10 @@ def is_pretokenized_dataset(data: Union[str, Dataset, IterableDataset]):
             splitName="train[:1]",
             datafile=data,
         )
-
+    if data.column_names is None:
+        it = iter(data)
+        d = next(it)
+        return ("input_ids" in d) and ("labels" in d)
     return ("input_ids" in data.column_names) and ("labels" in data.column_names)
 
 
@@ -561,6 +564,7 @@ def setup_train_dataset_for_odm(
         eval_batch_size=train_args.per_device_eval_batch_size,
         reward_type=odm_config.odm.reward_type,
     )
+
     train_args.accelerator_config = {"split_batches": True}
     return (True, train_dataset, data_collator)
 

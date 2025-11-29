@@ -63,6 +63,10 @@ def load_yaml_or_json(file_path: str) -> dict:
 
 
 def resolve_iterable_dataset_features(data: IterableDataset):
+    # resolve ._resolve_features() is not working
+    # since input_ids etc are populated which are dict[tensor]
+    # such nested tensor structures not supported
+    return data
     if data.column_names is None:
         if isinstance(data, IterableDataset):
             if hasattr(data, "_resolve_features"):
